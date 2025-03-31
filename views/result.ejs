@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Result</title>
+    <link rel="icon" href="../images/heijmans-favicon.ico" type="image/png">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <!-- Overall page container -->
+    <div class="container">
+
+        <header class="page-header">
+            <img src="../images/heijmans-logo.png" alt="Heijmans Logo" class="header-logo">
+            <h1>Prediction Result</h1>
+        </header>
+
+        <!-- Container for general info -->
+        <div class="info-section card highlight-border"> <!-- Added 'card' class -->
+            <p>File Uploaded: <strong>
+                    <%= filename %>
+                </strong></p>
+        </div>
+
+
+        <!-- Container for the main prediction results -->
+        <div class="prediction-section card highlight-border"> <!-- Added 'card' class -->
+            <h2>Azure AI Model Prediction:</h2>
+
+            <% if (prediction) { %>
+                <%# Attempt to display the specific 'prediction' key first %>
+                    <% if (prediction.prediction) { %>
+                        <div class="prediction-summary">
+                            <p class="result-label">Result: <%= prediction.prediction %>
+                            </p>
+                        </div>
+                    <% } else { %>
+                        <div class="prediction-summary">
+                            <p><em>Standard 'prediction' key not found in response.</em></p>
+                        </div>
+                    <% } %>
+
+                    <%# Example: Display confidence if available %>
+                    <% if (typeof prediction.confidence==='number' ) { %>
+                        <div class="prediction-confidence">
+                            <p>Confidence: <%= prediction.confidence.toFixed(3) %>
+                            </p>
+                        </div>
+                    <% } %>
+
+                    <hr class="section-divider"> <!-- Optional visual separator -->
+
+                    <!-- Container for the raw response -->
+                    <div class="raw-response-details">
+                        <h3>Full Azure Response:</h3>
+                        <pre><%= JSON.stringify(prediction, null, 2) %></pre>
+                    </div>
+
+            <% } else { %>
+                <div class="error-message">
+                    <p style="color: red;">Error: No prediction data received.</p>
+                </div>
+            <% } %>
+        </div>
+
+
+        <!-- Container for action links -->
+        <div class="actions-section">
+            <a href="/" class="button-link">Upload Another Image</a>
+        </div>
+
+    </div> <!-- End of .container -->
+</body>
+
+</html>

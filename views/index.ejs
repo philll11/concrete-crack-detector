@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concrete Crack Detector</title>
+    <link rel="icon" href="../images/heijmans-favicon.ico" type="image/png">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <!-- Overall page container -->
+    <div class="container">
+
+        <header class="page-header">
+            <img src="../images/heijmans-logo.png" alt="Heijmans Logo" class="header-logo">
+            <h1>Upload Concrete Image</h1>
+        </header>
+
+        <!-- Container specifically for flash messages -->
+        <div class="flash-container">
+            <% if (flashMessages.error && flashMessages.error.length > 0) { %>
+                <div class="flash flash-error">
+                    <% flashMessages.error.forEach(function(message){ %>
+                        <p><%= message %></p>
+                    <% }) %>
+                </div>
+            <% } %>
+            <% if (flashMessages.info && flashMessages.info.length > 0) { %>
+                 <div class="flash flash-info">
+                    <% flashMessages.info.forEach(function(message){ %>
+                        <p><%= message %></p>
+                    <% }) %>
+                </div>
+            <% } %>
+             <% if (flashMessages.success && flashMessages.success.length > 0) { %>
+                <div class="flash flash-success">
+                   <% flashMessages.success.forEach(function(message){ %>
+                       <p><%= message %></p>
+                   <% }) %>
+               </div>
+           <% } %>
+        </div>
+
+        <!-- Container for the upload form section -->
+        <div class="upload-section card highlight-border"> <!-- Added 'card' class for potential shared styling -->
+            <form method="post" action="/predict" enctype="multipart/form-data" class="upload-form">
+                 <!-- Optional: Group label and input -->
+                 <div class="form-group">
+                    <label for="imageFile">Choose Image (jpg, jpeg, png):</label>
+                    <input type="file" id="imageFile" name="imageFile" accept=".png, .jpg, .jpeg" required>
+                 </div>
+                 <!-- Container for the submit button -->
+                 <div class="form-actions">
+                    <button type="submit">Check for Cracks</button>
+                 </div>
+            </form>
+        </div>
+
+    </div> <!-- End of .container -->
+</body>
+</html>
