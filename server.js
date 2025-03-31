@@ -12,7 +12,7 @@ const app = express();
 const PORT = process.env.PORT || 3000; // Use port from env or default to 3000
 
 // Get Azure Credentials (securely from environment variables)
-const AZURE_ENDPOINT_URL = process.env.AZURE_ENDPOINT_URL;
+const PREDICTION_ENDPOINT_URL = process.env.PREDICTION_ENDPOINT_URL;
 const AZURE_API_KEY = process.env.AZURE_API_KEY;
 const SESSION_SECRET = process.env.SESSION_SECRET;
 
@@ -70,7 +70,7 @@ const upload = multer({
 
 // --- Helper Function for Azure API Call ---
 async function callAzurePredictionAPI(imageBuffer) {
-    if (!AZURE_ENDPOINT_URL || !AZURE_API_KEY) {
+    if (!PREDICTION_ENDPOINT_URL || !AZURE_API_KEY) {
         console.error("Azure endpoint URL or API Key is not configured.");
         // Throw an error that the route handler can catch
         throw new Error("Server configuration error: Azure credentials missing.");
@@ -88,9 +88,9 @@ async function callAzurePredictionAPI(imageBuffer) {
         // Add any other required headers here
     };
 
-    console.log(`Sending prediction request to: ${AZURE_ENDPOINT_URL}`);
+    console.log(`Sending prediction request to: ${PREDICTION_ENDPOINT_URL}`);
     try {
-        const response = await axios.post(AZURE_ENDPOINT_URL, imageBuffer, {
+        const response = await axios.post(PREDICTION_ENDPOINT_URL, imageBuffer, {
              headers: headers,
              timeout: 60000 // 60 second timeout
         });
@@ -208,8 +208,8 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Server started on http://localhost:${PORT}`);
     // Startup check for Azure credentials
-    if (!AZURE_ENDPOINT_URL || !AZURE_API_KEY) {
-        console.warn("\n*** WARNING: AZURE_ENDPOINT_URL or AZURE_API_KEY not found in .env file. ***");
+    if (!PREDICTION_ENDPOINT_URL || !AZURE_API_KEY) {
+        console.warn("\n*** WARNING: PREDICTION_ENDPOINT_URL or AZURE_API_KEY not found in .env file. ***");
         console.warn("*** The application will run, but predictions WILL FAIL.        ***\n");
     } else {
         console.log("Azure credentials loaded successfully.");
