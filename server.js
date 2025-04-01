@@ -66,24 +66,119 @@ const upload = multer({
         }
     }
 // The key 'imageFile' matches the 'name' attribute of the file input in the form
-}).single('imageFile');
+}).single('imageFile', 10); // Allow up to 10 files at once
+
+// --- Routes ---
+
+// GET Route for the homepage (display upload form)
+app.get('/', (req, res) => {
+    // Render index.ejs, passing any flash messages if they exist
+    res.render('index');
+});
+
+// POST Route to handle the file upload and prediction
+app.post('/predict', (req, res) => {
+    // Use multer middleware to handle the upload
+    upload(req, res, async (err) => {
+        // Handle Multer errors (e.g., file size, file type)
+        if (err instanceof multer.MulterError) {
+            console.error("Multer error:", err);
+            req.flash('error', `File Upload Error: ${err.message}`);
+            return res.redirect('/');
+        } else if (err) {
+             // Handle other errors during upload (e.g., our custom file filter error)
+            console.error("Upload error:", err);
+            req.flash('error', err.message || 'An unexpected error occurred during file upload.');
+            return res.redirect('/');
+        }
+
+        // Check if a file was actually uploaded
+        if (!req.files || req.files.length === 0) {
+            req.flash('error', 'No files selected for upload.');
+            return res.redirect('/');
+        }
+
+        // File uploaded successfully, proceed to call Azure
+        try {
+            const predictionPromises = req.files.map(async (file) => {
+                console.log(`Processing file: ${file.originalname}`);
+                const imageBuffer = file.buffer;
+                const originalFilename = file.originalname;
+                const mimeType = file.mimetype;
+
+                const predictionResult = await callAzurePredictionAPI(imageBuffer);
+
+                // Convert buffer to Data URL
+                const base64Image = imageBuffer.toString('base64');
+                const imageDataUrl = `data:${mimeType};base64,${base64Image}`;
+
+                // Generate a unique ID for this result object
+                const resultId = crypto.randomUUID();
+
+                // Return an object containing all data for this file
+                return {
+                    id: resultId, // Unique ID for linking in frontend
+                    filename: originalFilename,
+                    prediction: predictionResult,
+                    imageDataUrl: imageDataUrl
+                };
+            });
+
+            
+            // Wait for all prediction calls to complete
+            // Promise.all rejects if *any* promise rejects
+            const results = await Promise.all(predictionPromises);
+
+            // Render the results page with the array of results
+            res.render('result', { results: results }); // Pass the array
+
+        } catch (apiError) {
+            // Handle errors from the callAzurePredictionAPI function
+            console.error("API call failed:", apiError);
+            req.flash('error', `Prediction Failed: ${apiError.message}`);
+            res.redirect('/');
+        }
+    });
+});
+
+// --- Global Error Handler (Optional but recommended) ---
+// Catches errors not handled in specific routes
+app.use((err, req, res, next) => {
+    console.error("Unhandled Error:", err.stack || err);
+    req.flash('error', 'An unexpected server error occurred.');
+    // Avoid redirect loops, maybe render an error page or just redirect to home
+    if (!res.headersSent) {
+       res.redirect('/');
+    } else {
+       next(err); // Pass to default Express error handler if headers already sent
+    }
+});
+
+
+// --- Start Server ---
+app.listen(PORT, () => {
+    console.log(`Server started on http://localhost:${PORT}`);
+    // Startup check for Azure credentials
+    if (!PREDICTION_ENDPOINT_URL || !AZURE_API_KEY) {
+        console.warn("\n*** WARNING: PREDICTION_ENDPOINT_URL or AZURE_API_KEY not found in .env file. ***");
+        console.warn("*** The application will run, but predictions WILL FAIL.        ***\n");
+    } else {
+        console.log("Azure credentials loaded successfully.");
+    }
+});
+
 
 // --- Helper Function for Azure API Call ---
 async function callAzurePredictionAPI(imageBuffer) {
-    if (!PREDICTION_ENDPOINT_URL || !AZURE_API_KEY) {
-        console.error("Azure endpoint URL or API Key is not configured.");
-        // Throw an error that the route handler can catch
+    if (!PREDICTION_ENDPOINT_URL) {
+        console.error("Azure endpoint URL is not configured.");
         throw new Error("Server configuration error: Azure credentials missing.");
     }
 
     // --- Prepare the request for Azure ---
-    // IMPORTANT: Adjust headers based on YOUR Azure endpoint's requirements!
     const headers = {
-        // This content type is common for sending raw image data
-        'Content-Type': 'application/octet-stream',
-        // Common header for Azure ML Service key, might be different (e.g., 'Prediction-Key')
-        'Authorization': `Bearer ${AZURE_API_KEY}`
-        // OR if your key doesn't need 'Bearer ':
+        'Content-Type': 'application/octet-stream'
+        // 'Authorization': `Bearer ${AZURE_API_KEY}`
         // 'Ocp-Apim-Subscription-Key': AZURE_API_KEY // Example for some Azure services
         // Add any other required headers here
     };
@@ -137,81 +232,3 @@ async function callAzurePredictionAPI(imageBuffer) {
         }
     }
 }
-
-// --- Routes ---
-
-// GET Route for the homepage (display upload form)
-app.get('/', (req, res) => {
-    // Render index.ejs, passing any flash messages if they exist
-    res.render('index');
-});
-
-// POST Route to handle the file upload and prediction
-app.post('/predict', (req, res) => {
-    // Use multer middleware to handle the upload
-    upload(req, res, async (err) => {
-        // Handle Multer errors (e.g., file size, file type)
-        if (err instanceof multer.MulterError) {
-            console.error("Multer error:", err);
-            req.flash('error', `File Upload Error: ${err.message}`);
-            return res.redirect('/');
-        } else if (err) {
-             // Handle other errors during upload (e.g., our custom file filter error)
-            console.error("Upload error:", err);
-            req.flash('error', err.message || 'An unexpected error occurred during file upload.');
-            return res.redirect('/');
-        }
-
-        // Check if a file was actually uploaded
-        if (!req.file) {
-            req.flash('error', 'No file selected for upload.');
-            return res.redirect('/');
-        }
-
-        // File uploaded successfully, proceed to call Azure
-        try {
-            const imageBuffer = req.file.buffer; // Get the image data from memory
-            const originalFilename = req.file.originalname; // Get the original filename
-
-            const predictionResult = await callAzurePredictionAPI(imageBuffer);
-
-            // Render the result page with the prediction data
-            res.render('result', {
-                prediction: predictionResult,
-                filename: originalFilename
-            });
-
-        } catch (apiError) {
-            // Handle errors from the callAzurePredictionAPI function
-            console.error("API call failed:", apiError);
-            req.flash('error', `Prediction Failed: ${apiError.message}`);
-            res.redirect('/');
-        }
-    });
-});
-
-// --- Global Error Handler (Optional but recommended) ---
-// Catches errors not handled in specific routes
-app.use((err, req, res, next) => {
-    console.error("Unhandled Error:", err.stack || err);
-    req.flash('error', 'An unexpected server error occurred.');
-    // Avoid redirect loops, maybe render an error page or just redirect to home
-    if (!res.headersSent) {
-       res.redirect('/');
-    } else {
-       next(err); // Pass to default Express error handler if headers already sent
-    }
-});
-
-
-// --- Start Server ---
-app.listen(PORT, () => {
-    console.log(`Server started on http://localhost:${PORT}`);
-    // Startup check for Azure credentials
-    if (!PREDICTION_ENDPOINT_URL || !AZURE_API_KEY) {
-        console.warn("\n*** WARNING: PREDICTION_ENDPOINT_URL or AZURE_API_KEY not found in .env file. ***");
-        console.warn("*** The application will run, but predictions WILL FAIL.        ***\n");
-    } else {
-        console.log("Azure credentials loaded successfully.");
-    }
-});
