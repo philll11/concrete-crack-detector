@@ -1,78 +1,159 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prediction Result</title>
-    <link rel="icon" href="../images/heijmans-favicon.ico" type="image/png">
+    <title>Prediction Results</title> <!-- Changed title -->
     <link rel="stylesheet" href="/css/style.css">
 </head>
-
 <body>
-    <!-- Overall page container -->
     <div class="container">
-
         <header class="page-header">
-            <img src="../images/heijmans-logo.png" alt="Heijmans Logo" class="header-logo">
-            <h1>Prediction Result</h1>
+            <img src="/images/heijmans-logo.png" alt="Heijmans Logo" class="header-logo">
+            <h1>Prediction Results</h1> <!-- Changed title -->
         </header>
 
-        <!-- Container for general info -->
-        <div class="info-section card highlight-border"> <!-- Added 'card' class -->
-            <p>File Uploaded: <strong>
-                    <%= filename %>
-                </strong></p>
-        </div>
+        <!-- *** LOOP through the results array *** -->
+        <% if (typeof results !== 'undefined' && results.length > 0) { %>
+            <% results.forEach((result, index) => { %>
 
+                <!-- Section container for each result -->
+                <div class="result-item card highlight-border"> <!-- Added class -->
 
-        <!-- Container for the main prediction results -->
-        <div class="prediction-section card highlight-border"> <!-- Added 'card' class -->
-            <h2>Azure AI Model Prediction:</h2>
-
-            <% if (prediction) { %>
-                <%# Attempt to display the specific 'prediction' key first %>
-                    <% if (prediction.prediction) { %>
-                        <div class="prediction-summary">
-                            <p class="result-label">Result: <%= prediction.prediction %>
-                            </p>
-                        </div>
-                    <% } else { %>
-                        <div class="prediction-summary">
-                            <p><em>Standard 'prediction' key not found in response.</em></p>
-                        </div>
-                    <% } %>
-
-                    <%# Example: Display confidence if available %>
-                    <% if (typeof prediction.confidence==='number' ) { %>
-                        <div class="prediction-confidence">
-                            <p>Confidence: <%= prediction.confidence.toFixed(3) %>
-                            </p>
-                        </div>
-                    <% } %>
-
-                    <hr class="section-divider"> <!-- Optional visual separator -->
-
-                    <!-- Container for the raw response -->
-                    <div class="raw-response-details">
-                        <h3>Full Azure Response:</h3>
-                        <pre><%= JSON.stringify(prediction, null, 2) %></pre>
+                    <div class="info-section"> <!-- Keep this class for consistency -->
+                         <p>File Uploaded: <strong><%= result.filename %></strong></p>
                     </div>
 
-            <% } else { %>
-                <div class="error-message">
-                    <p style="color: red;">Error: No prediction data received.</p>
-                </div>
-            <% } %>
-        </div>
+                    <div class="prediction-section"> <!-- Keep this class -->
+                        <h2>Prediction Result #<%= index + 1 %></h2> <!-- Number each result -->
+
+                        <% if (result.prediction) { %>
+                            <!-- *** Use unique IDs for hidden inputs *** -->
+                            <input type="hidden" id="imageDataUrl_<%= result.id %>" value="<%= result.imageDataUrl %>">
+                            <input type="hidden" id="imageFilename_<%= result.id %>" value="<%= result.filename %>">
+                            <input type="hidden" id="predictionData_<%= result.id %>" value="<%= JSON.stringify(result.prediction) %>">
+
+                            <% if (result.prediction.prediction) { %>
+                                <div class="prediction-summary">
+                                     <p class="result-label">Result: <%= result.prediction.prediction %></p>
+                                </div>
+                            <% } else { %>
+                                <div class="prediction-summary">
+                                     <p><em>Standard 'prediction' key not found.</em></p>
+                                 </div>
+                            <% } %>
+                            <% if (typeof result.prediction.confidence === 'number') { %>
+                                <div class="prediction-confidence">
+                                     <p>Confidence: <%= result.prediction.confidence.toFixed(3) %></p>
+                                </div>
+                            <% } %>
+
+                            <hr class="section-divider">
+
+                            <div class="raw-response-details">
+                                <h3>Full Azure Response:</h3>
+                                <pre><%= JSON.stringify(result.prediction, null, 2) %></pre>
+                             </div>
+
+                            <div class="kwisp-action-section">
+                                <!-- *** Add data-result-id attribute to button *** -->
+                                <!-- *** Use unique ID for the button itself *** -->
+                                <button type="button" id="sendKwispBtn_<%= result.id %>" class="button-secondary kwisp-button" data-result-id="<%= result.id %>">
+                                    Send Report to Kwisp
+                                </button>
+                                <!-- *** Use unique ID for status span *** -->
+                                <span id="kwispStatus_<%= result.id %>" class="kwisp-status"></span>
+                            </div>
+
+                        <% } else { %>
+                            <div class="error-message">
+                                <p style="color: red;">Error: No prediction data received for this file.</p>
+                             </div>
+                        <% } %>
+                    </div>
+                </div> <!-- End of .result-item -->
+
+                 <% if (index < results.length - 1) { %>
+                      <hr class="major-divider"> <!-- Optional: Divider between results -->
+                 <% } %>
+
+            <% }) %> <!-- End of forEach loop -->
+
+        <% } else { %>
+            <!-- Handle case where results array might be empty or undefined (though unlikely with checks) -->
+            <div class="card highlight-border">
+                 <p>No prediction results to display.</p>
+            </div>
+        <% } %>
 
 
-        <!-- Container for action links -->
+        <hr class="major-divider"> <!-- Divider before final link -->
+
         <div class="actions-section">
-            <a href="/" class="button-link">Upload Another Image</a>
+            <a href="/" class="button-link">Upload More Images</a> <!-- Changed text -->
         </div>
 
-    </div> <!-- End of .container -->
-</body>
+    </div>
 
+    <script>
+        // Select ALL Kwisp buttons using a common class
+        const sendKwispBtns = document.querySelectorAll('.kwisp-button');
+
+        // Add event listener to each button
+        sendKwispBtns.forEach(button => {
+            button.addEventListener('click', async (event) => {
+                const clickedButton = event.target;
+                // Get the unique result ID from the button's data attribute
+                const resultId = clickedButton.dataset.resultId;
+
+                // Find the corresponding status span and hidden inputs using the ID
+                const kwispStatus = document.getElementById(`kwispStatus_${resultId}`);
+                const imageDataUrlInput = document.getElementById(`imageDataUrl_${resultId}`);
+                const imageFilenameInput = document.getElementById(`imageFilename_${resultId}`);
+                const predictionDataInput = document.getElementById(`predictionData_${resultId}`);
+
+                if (!kwispStatus || !imageDataUrlInput || !imageFilenameInput || !predictionDataInput) {
+                    console.error("Could not find associated elements for result ID:", resultId);
+                    if(kwispStatus) kwispStatus.textContent = 'Internal page error.';
+                    return; // Stop if elements aren't found
+                }
+
+                kwispStatus.textContent = 'Sending...';
+                kwispStatus.className = 'kwisp-status sending';
+                clickedButton.disabled = true;
+
+                try {
+                    const response = await fetch('/send-to-kwisp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            // Send data specific to this result
+                            imageDataUrl: imageDataUrlInput.value,
+                            filename: imageFilenameInput.value,
+                            prediction: JSON.parse(predictionDataInput.value)
+                        }),
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok && result.success) {
+                        kwispStatus.textContent = 'Sent successfully!';
+                        kwispStatus.className = 'kwisp-status success';
+                        // Optionally keep button disabled or hide it
+                    } else {
+                        kwispStatus.textContent = `Error: ${result.message || 'Failed to send.'}`;
+                        kwispStatus.className = 'kwisp-status error';
+                        clickedButton.disabled = false; // Re-enable on failure
+                    }
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                    kwispStatus.textContent = 'Error: Network issue or server unavailable.';
+                    kwispStatus.className = 'kwisp-status error';
+                    clickedButton.disabled = false;
+                }
+            });
+        });
+    </script>
+
+</body>
 </html>

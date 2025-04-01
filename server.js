@@ -6,8 +6,10 @@ const multer = require('multer'); // For handling file uploads
 const path = require('path');     // For working with file paths
 const session = require('express-session'); // For session management (needed for flash)
 const flash = require('connect-flash');   // For flash messages
+const crypto = require('crypto'); // Import crypto for generating unique IDs
 
-// --- Configuration ---
+
+// ################################################ Configuration ###########################################################\
 const app = express();
 const PORT = process.env.PORT || 3000; // Use port from env or default to 3000
 
@@ -21,13 +23,18 @@ if (!SESSION_SECRET) {
     process.exit(1); // Exit if session secret is missing
 }
 
-// --- Middleware Setup ---
+// ################################################ Middleware Setup ###########################################################\
 
 // Serve static files (CSS, client-side JS) from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Set EJS as the templating engine
+// Parse JSON request bodies (needed for API calls)
+app.use(express.json({ limit: '20mb' })); // Note: The limit is set to 20mb to accommodate larger base64 image data
+// Middleware to parse URL-encoded bodies (needed for forms, though not strictly for the Kwisp call)
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+// Parse incoming request bodies (form data)
 app.set('view engine', 'ejs');
+// Set EJS as the templating engine
 app.set('views', path.join(__dirname, 'views')); // Tell Express where to find view files
 
 // Session middleware configuration
@@ -66,24 +73,156 @@ const upload = multer({
         }
     }
 // The key 'imageFile' matches the 'name' attribute of the file input in the form
-}).single('imageFile');
+}).array('imageFiles', 10); // Allow up to 10 files at once
 
-// --- Helper Function for Azure API Call ---
-async function callAzurePredictionAPI(imageBuffer) {
+
+// ################################################ Routes ###########################################################
+
+// GET Route for the homepage (display upload form)
+app.get('/', (req, res) => { res.render('index'); });
+
+// POST Route to handle the file upload and prediction
+app.post('/predict', (req, res) => {
+    // Use multer middleware to handle the upload
+    upload(req, res, async (err) => {
+        // Handle Multer errors (e.g., file size, file type)
+        if (err instanceof multer.MulterError) {
+            console.error("Multer error:", err);
+            req.flash('error', `File Upload Error: ${err.message}`);
+            return res.redirect('/');
+        } else if (err) {
+             // Handle other errors during upload (e.g., our custom file filter error)
+            console.error("Upload error:", err);
+            req.flash('error', err.message || 'An unexpected error occurred during file upload.');
+            return res.redirect('/');
+        }
+
+        // Check if a file was actually uploaded
+        if (!req.files || req.files.length === 0) {
+            req.flash('error', 'No files selected for upload.');
+            return res.redirect('/');
+        }
+
+        // Files uploaded successfully, proceed to call Azure
+        try {
+            const predictionPromises = req.files.map(async (file) => {
+                console.log(`Processing file: ${file.originalname}`);
+                const imageBuffer = file.buffer;
+                const originalFilename = file.originalname;
+                const mimeType = file.mimetype;
+
+                const predictionResult = await callAzurePredictionAPI(imageBuffer);
+
+                // Convert buffer to Data URL
+                const base64Image = imageBuffer.toString('base64');
+                const imageDataUrl = `data:${mimeType};base64,${base64Image}`;
+
+                // Generate a unique ID for this result object
+                const resultId = crypto.randomUUID();
+
+                // Return an object containing all data for this file
+                return {
+                    id: resultId, // Unique ID for linking in frontend
+                    filename: originalFilename,
+                    prediction: predictionResult,
+                    imageDataUrl: imageDataUrl
+                };
+            });
+            
+            // Wait for all prediction calls to complete
+            // Promise.all rejects if *any* promise rejects
+            const results = await Promise.all(predictionPromises);
+
+            // Render the results page with the array of results
+            res.render('result', { results: results }); // Pass the array
+
+        } catch (apiError) {
+            // Handle errors from the callAzurePredictionAPI function
+            console.error("API call failed:", apiError);
+            req.flash('error', `Prediction Failed: ${apiError.message}`);
+            res.redirect('/');
+        }
+    });
+});
+
+
+// POST /send-to-kwisp
+app.post('/send-to-kwisp', async (req, res) => {
+    // Extract data sent from the frontend JavaScript
+    const { imageDataUrl, filename, predictionObj } = req.body;
+
+    if (!imageDataUrl || !filename) {
+        return res.status(400).json({ success: false, message: "Missing image data or filename." });
+    }
+
+    try {
+        // Extract Base64 data and image type from Data URL
+        const base64Marker = ';base64,';
+        const base64Data = imageDataUrl.substring(imageDataUrl.indexOf(base64Marker) + base64Marker.length);
+        const imageType = imageDataUrl.substring(imageDataUrl.indexOf(':') + 1, imageDataUrl.indexOf(';')); // e.g., "image/jpeg"
+        const fileExtension = `.${imageType.split('/')[1]}`; // e.g., ".jpeg", png
+
+        // Generate the payload for Kwisp API
+        const kwispPayload = createKwispPayload(filename, fileExtension, predictionObj, base64Data);
+
+        // Call the function to send data to Kwisp
+        await sendToKwisp(kwispPayload);
+        res.json({ success: true, message: "Data sent to Kwisp successfully." });
+    } catch (error) {
+        console.error("Error sending data to Kwisp:", error);
+        res.status(500).json({ success: false, message: error.message || 'Failed to send data to Kwisp.' });
+    }
+});
+
+
+// ################################################ Error Handler ###########################################################
+
+// --- Global Error Handler (Optional but recommended) ---
+// Catches errors not handled in specific routes
+app.use((err, req, res, next) => {
+    console.error("Unhandled Error:", err.stack || err);
+    req.flash('error', 'An unexpected server error occurred.');
+    // Avoid redirect loops, maybe render an error page or just redirect to home
+    if (!res.headersSent) {
+       res.redirect('/');
+    } else {
+       next(err); // Pass to default Express error handler if headers already sent
+    }
+});
+
+// --- Start Server ---
+app.listen(PORT, () => {
+    console.log(`Server started on http://localhost:${PORT}`);
+    // Startup check for Azure credentials
     if (!PREDICTION_ENDPOINT_URL || !AZURE_API_KEY) {
-        console.error("Azure endpoint URL or API Key is not configured.");
-        // Throw an error that the route handler can catch
+        console.warn("\n*** WARNING: PREDICTION_ENDPOINT_URL or AZURE_API_KEY not found in .env file. ***");
+        console.warn("*** The application will run, but predictions WILL FAIL.        ***\n");
+    } else {
+        console.log("Azure credentials loaded successfully.");
+    }
+});
+
+
+// ################################################ Helper Functions ###########################################################
+/**
+ * Call Azure Prediction API
+ * @param {Buffer} imageBuffer - The image buffer to be sent to Azure
+ * @returns {Promise<Object>} - The prediction result from Azure
+ * @description This function sends the image buffer to the Azure Prediction API and returns the prediction result.
+ * It handles errors and logs the response for debugging.
+ * @throws {Error} - Throws an error if the API call fails or if the response structure is unexpected.
+ * @throws {Error} - Throws an error if the Azure endpoint URL is not configured.
+ */
+async function callAzurePredictionAPI(imageBuffer) {
+    if (!PREDICTION_ENDPOINT_URL) {
+        console.error("Azure endpoint URL is not configured.");
         throw new Error("Server configuration error: Azure credentials missing.");
     }
 
     // --- Prepare the request for Azure ---
-    // IMPORTANT: Adjust headers based on YOUR Azure endpoint's requirements!
     const headers = {
-        // This content type is common for sending raw image data
-        'Content-Type': 'application/octet-stream',
-        // Common header for Azure ML Service key, might be different (e.g., 'Prediction-Key')
-        'Authorization': `Bearer ${AZURE_API_KEY}`
-        // OR if your key doesn't need 'Bearer ':
+        'Content-Type': 'application/octet-stream'
+        // 'Authorization': `Bearer ${AZURE_API_KEY}`
         // 'Ocp-Apim-Subscription-Key': AZURE_API_KEY // Example for some Azure services
         // Add any other required headers here
     };
@@ -138,80 +277,94 @@ async function callAzurePredictionAPI(imageBuffer) {
     }
 }
 
-// --- Routes ---
+/**
+ * Send data to Kwisp API
+ * @param {Object} payload - The payload object to be sent to the Kwisp API
+ * @description This function sends the payload to the Kwisp API using Axios.
+ * It handles the response and errors appropriately.
+ * @throws {Error} - Throws an error if the API call fails or if the response structure is unexpected.
+ * @throws {Error} - Throws an error if the Kwisp API URL is not configured.
+ * @throws {Error} - Throws an error if the payload is not valid.
+ */
+async function sendToKwisp(payload) {
+    try {
+        // Make the POST request to the Kwisp API
+        console.log(`Sending request to Kwisp API: ${HEIJMANS_KWISP_API_URL}`);
 
-// GET Route for the homepage (display upload form)
-app.get('/', (req, res) => {
-    // Render index.ejs, passing any flash messages if they exist
-    res.render('index');
-});
+        const kwispResponse = await axios.post(HEIJMANS_KWISP_API_URL, payload, {
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            timeout: 30000 // 30 second timeout
+        });
 
-// POST Route to handle the file upload and prediction
-app.post('/predict', (req, res) => {
-    // Use multer middleware to handle the upload
-    upload(req, res, async (err) => {
-        // Handle Multer errors (e.g., file size, file type)
-        if (err instanceof multer.MulterError) {
-            console.error("Multer error:", err);
-            req.flash('error', `File Upload Error: ${err.message}`);
-            return res.redirect('/');
-        } else if (err) {
-             // Handle other errors during upload (e.g., our custom file filter error)
-            console.error("Upload error:", err);
-            req.flash('error', err.message || 'An unexpected error occurred during file upload.');
-            return res.redirect('/');
+        // Check for 202 Accepted response (or other success codes if applicable)
+        if (kwispResponse.status === 202) {
+            console.log("Kwisp API accepted the request (Status 202).");
+            res.json({ success: true, message: "Data sent to Kwisp successfully." });
+        } else {
+            // Handle unexpected success codes if necessary
+            console.warn(`Kwisp API returned unexpected success status: ${kwispResponse.status}`);
+            res.status(kwispResponse.status).json({ success: false, message: `Kwisp API returned status ${kwispResponse.status}` });
         }
 
-        // Check if a file was actually uploaded
-        if (!req.file) {
-            req.flash('error', 'No file selected for upload.');
-            return res.redirect('/');
+    } catch (error) {
+        console.error("Error calling Kwisp API:");
+        let errorMessage = "Failed to send data to Kwisp.";
+        if (error.response) {
+            console.error('Status:', error.response.status);
+            console.error('Headers:', error.response.headers);
+            console.error('Data:', error.response.data);
+            errorMessage = `Kwisp API Error: ${error.response.status} - ${JSON.stringify(error.response.data)}`;
+            res.status(error.response.status).json({ success: false, message: errorMessage });
+        } else if (error.request) {
+            console.error('Request Error:', error.request);
+            errorMessage = "Network error: No response received from Kwisp API.";
+            res.status(504).json({ success: false, message: errorMessage }); // Gateway Timeout
+        } else {
+            console.error('Error:', error.message);
+            errorMessage = `An unexpected error occurred: ${error.message}`;
+            res.status(500).json({ success: false, message: errorMessage }); // Internal Server Error
         }
-
-        // File uploaded successfully, proceed to call Azure
-        try {
-            const imageBuffer = req.file.buffer; // Get the image data from memory
-            const originalFilename = req.file.originalname; // Get the original filename
-
-            const predictionResult = await callAzurePredictionAPI(imageBuffer);
-
-            // Render the result page with the prediction data
-            res.render('result', {
-                prediction: predictionResult,
-                filename: originalFilename
-            });
-
-        } catch (apiError) {
-            // Handle errors from the callAzurePredictionAPI function
-            console.error("API call failed:", apiError);
-            req.flash('error', `Prediction Failed: ${apiError.message}`);
-            res.redirect('/');
-        }
-    });
-});
-
-// --- Global Error Handler (Optional but recommended) ---
-// Catches errors not handled in specific routes
-app.use((err, req, res, next) => {
-    console.error("Unhandled Error:", err.stack || err);
-    req.flash('error', 'An unexpected server error occurred.');
-    // Avoid redirect loops, maybe render an error page or just redirect to home
-    if (!res.headersSent) {
-       res.redirect('/');
-    } else {
-       next(err); // Pass to default Express error handler if headers already sent
     }
-});
+}
 
+/**
+ * Create the payload for Kwisp API
+ * @param {*} filename - The name of the file uploaded
+ * @param {*} fileExtension - The file extension (e.g., .jpeg, .png)
+ * @param {*} predictionObj - The prediction object returned from Azure
+ * @param {*} predictionObj.prediction - The prediction result (e.g., "crack", "no crack")
+ * @param {*} predictionObj.confidence - The confidence score of the prediction
+ * @param {*} base64Data - The base64 encoded string of the image data
+ * @returns {Object} - The payload object to be sent to Kwisp API
+ * @description This function constructs the payload for the Kwisp API based on the provided parameters.
+ */
+function createKwispPayload(filename, fileExtension, predictionObj, base64Data) {
+    
+    // Construct the complex JSON payload
+    const kwispPayload = {
+        "sender": "CI",
+        "receiver": "Heijmans",
+        "instigator": "concrete-innovation",
+        "case": {
+            "type": "Bridge",
+            "id": "fbfb54a7-d918-4768-9991-0bb3374efb7c",
+            "agreement": {
+                "type": "Test-Agreement",
+                "designation": "HEIJ123"
+            },
+            "commentDescriptionShort": `Prediction Result: ${predictionObj?.prediction || 'N/A'}. File: ${filename}`,
+            "commentDescriptionExtensive": `Crack detection analysis performed on image ${filename}. Result: ${predictionObj?.prediction || 'N/A'}. Confidence: ${predictionObj?.confidence?.toFixed(3) || 'N/A'}`,
+            "attachments": [{
+                "type": fileExtension, // Dynamic based on upload
+                "class": "file",
+                "designation": filename, // Dynamic based on upload
+                "base64String": base64Data, // Dynamic based on upload
+                "description": `Image uploaded for crack detection. Result: ${predictionObj?.prediction || 'N/A'}` // Dynamic
+            }]
+        }
+    };
 
-// --- Start Server ---
-app.listen(PORT, () => {
-    console.log(`Server started on http://localhost:${PORT}`);
-    // Startup check for Azure credentials
-    if (!PREDICTION_ENDPOINT_URL || !AZURE_API_KEY) {
-        console.warn("\n*** WARNING: PREDICTION_ENDPOINT_URL or AZURE_API_KEY not found in .env file. ***");
-        console.warn("*** The application will run, but predictions WILL FAIL.        ***\n");
-    } else {
-        console.log("Azure credentials loaded successfully.");
-    }
-});
+    return kwispPayload;
+}

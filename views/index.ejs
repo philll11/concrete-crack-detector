@@ -8,9 +8,7 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <!-- Overall page container -->
     <div class="container">
-
         <header class="page-header">
             <img src="../images/heijmans-logo.png" alt="Heijmans Logo" class="header-logo">
             <h1>Upload Concrete Image</h1>
@@ -46,8 +44,8 @@
             <form method="post" action="/predict" enctype="multipart/form-data" class="upload-form">
                  <!-- Optional: Group label and input -->
                  <div class="form-group">
-                    <label for="imageFile">Choose Image (jpg, jpeg, png):</label>
-                    <input type="file" id="imageFile" name="imageFile" accept=".png, .jpg, .jpeg" required>
+                    <label for="imageFiles">Choose Image(s) (jpg, jpeg, png):</label>
+                    <input type="file" id="imageFiles" name="imageFiles" accept=".png, .jpg, .jpeg" required multiple>
                  </div>
                  <!-- Container for the submit button -->
                  <div class="form-actions">
@@ -56,6 +54,6 @@
             </form>
         </div>
 
-    </div> <!-- End of .container -->
+    </div>
 </body>
 </html>

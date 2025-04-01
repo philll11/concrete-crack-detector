@@ -325,3 +325,85 @@ a:hover {
     background-color: var(--medium-gray);
     margin: 25px 0;
 }
+
+/* Container for each individual result */
+.result-item {
+    /* Inherits .card styles */
+    margin-bottom: 30px; /* Add more space between result cards */
+}
+
+.result-item .info-section {
+    /* Remove bottom margin if it exists from .card to avoid double margin */
+    margin-bottom: 0;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--light-gray);
+}
+.result-item .prediction-section {
+    /* Remove borders/margins if inherited from .card */
+    border: none;
+    box-shadow: none;
+    padding: 15px 0 0 0; /* Adjust padding if needed */
+    margin: 0;
+}
+
+.result-item .prediction-section h2 {
+    font-size: 1.2em; /* Make per-item heading slightly smaller */
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+}
+
+
+/* Optional: Style for divider between result items */
+hr.major-divider {
+    border: 0;
+    height: 2px; /* Make it thicker */
+    background-color: var(--medium-gray);
+    margin: 40px 0; /* More vertical space */
+}
+
+/* --- Kwisp Action Section --- */
+.kwisp-action-section {
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 1px solid var(--light-gray);
+    display: flex; /* Align button and status message */
+    align-items: center;
+    gap: 15px; /* Space between button and status */
+}
+
+/* Style for the secondary button */
+.button-secondary {
+    padding: 8px 16px;
+    background-color: #6c757d; /* Example secondary color */
+    color: var(--heijmans-white);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95em;
+    font-weight: 500;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.button-secondary:hover:not(:disabled) {
+    background-color: #5a6268;
+}
+.button-secondary:disabled {
+    background-color: #adb5bd;
+    cursor: not-allowed;
+}
+
+
+/* Status message styling */
+.kwisp-status {
+    font-size: 0.9em;
+    font-weight: 500;
+}
+.kwisp-status.sending {
+    color: var(--dark-gray);
+}
+.kwisp-status.success {
+    color: #28a745; /* Green for success */
+}
+.kwisp-status.error {
+    color: var(--heijmans-red); /* Red for error */
+}
