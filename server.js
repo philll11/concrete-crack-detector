@@ -15,8 +15,14 @@ const PORT = process.env.PORT || 3000; // Use port from env or default to 3000
 
 // Get Azure Credentials (securely from environment variables)
 const PREDICTION_ENDPOINT_URL = process.env.PREDICTION_ENDPOINT_URL;
+const CLIENT_ID = process.env.CLIENT_ID; // Client ID for Azure
+const CLIENT_SECRET = process.env.CLIENT_SECRET; // Client Secret for Azure
 const AZURE_API_KEY = process.env.AZURE_API_KEY;
 const SESSION_SECRET = process.env.SESSION_SECRET;
+
+// Get Kwisp API URL from environment variables
+const HEIJMANS_KWISP_API_URL = process.env.HEIJMANS_KWISP_API_URL; // Kwisp API URL
+const HEIJMANS_KWISP_API_KEY = process.env.HEIJMANS_KWISP_API_KEY; // Kwisp API Key (if needed)
 
 if (!SESSION_SECRET) {
     console.error("FATAL ERROR: SESSION_SECRET is not set in the .env file.");
@@ -102,8 +108,7 @@ app.post('/predict', (req, res) => {
             req.flash('error', 'No files selected for upload.');
             return res.redirect('/');
         }
-
-        // Files uploaded successfully, proceed to call Azure
+        
         try {
             const predictionPromises = req.files.map(async (file) => {
                 console.log(`Processing file: ${file.originalname}`);
@@ -111,66 +116,135 @@ app.post('/predict', (req, res) => {
                 const originalFilename = file.originalname;
                 const mimeType = file.mimetype;
 
-                const predictionResult = await callAzurePredictionAPI(imageBuffer);
+                // Call prediction API
+                let predictionResult = await callAzurePredictionAPI(imageBuffer);
 
-                // Convert buffer to Data URL
-                const base64Image = imageBuffer.toString('base64');
-                const imageDataUrl = `data:${mimeType};base64,${base64Image}`;
+                // Convert original image buffer to Data URL
+                const originalBase64Image = imageBuffer.toString('base64');
+                const originalImageDataUrl = `data:${mimeType};base64,${originalBase64Image}`;
 
-                // Generate a unique ID for this result object
+                // predictResult.prediction is expected to be a string of "True" or "False"
+                // Convert to boolean for easier handling in the frontend
+                if (predictionResult && predictionResult.prediction) {
+                    predictionResult.prediction = predictionResult.prediction.toLowerCase() === 'true';
+                }
+
+                // predictResult.confidence is expected to be a string of a number (e.g., "0.85")
+                // Convert to a number for easier handling in the frontend
+                if (predictionResult && predictionResult.confidence) {
+                    predictionResult.confidence = parseFloat(predictionResult.confidence);
+                }
+
+                // *** Process the classified image from the response ***
+                let classifiedImageDataUrl = null;
+                if (predictionResult && typeof predictionResult.classifiedImage === 'string') {
+                    const classifiedBase64 = predictionResult.classifiedImage;
+                    classifiedImageDataUrl = `data:image/${mimeType};base64,${classifiedBase64}`;
+                    console.log(`Processed classified image for ${originalFilename}`);
+                    // Remove the classified image from the prediction result to avoid sending it back to the client
+                    delete predictionResult.classifiedImage;
+                } else {
+                    console.log(`No classified image returned for ${originalFilename}`);
+                }
+
+                // Generate a unique ID for each result (UUID)
                 const resultId = crypto.randomUUID();
 
                 // Return an object containing all data for this file
                 return {
-                    id: resultId, // Unique ID for linking in frontend
+                    id: resultId,
                     filename: originalFilename,
-                    prediction: predictionResult,
-                    imageDataUrl: imageDataUrl
+                    prediction: predictionResult, // Contains { prediction, confidence }
+                    originalImageDataUrl: originalImageDataUrl, // Pass original image too
+                    classifiedImageDataUrl: classifiedImageDataUrl // Pass classified image if available
                 };
             });
-            
+
             // Wait for all prediction calls to complete
-            // Promise.all rejects if *any* promise rejects
             const results = await Promise.all(predictionPromises);
 
             // Render the results page with the array of results
-            res.render('result', { results: results }); // Pass the array
+            res.render('result', { results: results });
 
-        } catch (apiError) {
-            // Handle errors from the callAzurePredictionAPI function
-            console.error("API call failed:", apiError);
-            req.flash('error', `Prediction Failed: ${apiError.message}`);
-            res.redirect('/');
+        } catch (apiOrTokenError) {
+             console.error("Prediction process failed for one or more files:", apiOrTokenError);
+             req.flash('error', `Prediction Failed: ${apiOrTokenError.message}`);
+             res.redirect('/');
         }
     });
 });
 
 
-// POST /send-to-kwisp
-app.post('/send-to-kwisp', async (req, res) => {
-    // Extract data sent from the frontend JavaScript
-    const { imageDataUrl, filename, predictionObj } = req.body;
+// POST /send-batch-to-kwisp route to send batch data to Kwisp
+app.post('/send-batch-to-kwisp', async (req, res) => {
+    const { selectedItems } = req.body; // Expect an array named 'selectedItems'
 
-    if (!imageDataUrl || !filename) {
-        return res.status(400).json({ success: false, message: "Missing image data or filename." });
+    console.log(`Received request to send batch report for ${selectedItems?.length} items.`);
+
+    // --- Basic Validation ---
+    if (!selectedItems || !Array.isArray(selectedItems) || selectedItems.length === 0) {
+        return res.status(400).json({ success: false, message: "No selected items received or data is invalid." });
     }
 
     try {
-        // Extract Base64 data and image type from Data URL
-        const base64Marker = ';base64,';
-        const base64Data = imageDataUrl.substring(imageDataUrl.indexOf(base64Marker) + base64Marker.length);
-        const imageType = imageDataUrl.substring(imageDataUrl.indexOf(':') + 1, imageDataUrl.indexOf(';')); // e.g., "image/jpeg"
-        const fileExtension = `.${imageType.split('/')[1]}`; // e.g., ".jpeg", png
+        // --- Create the Base Kwisp Payload ---
+        const caseId = `batch-${Date.now()}`; // Example dynamic ID
+        const agreementDesignation = "HEIJ123-BATCH"; // Example designation
 
-        // Generate the payload for Kwisp API
-        const kwispPayload = createKwispPayload(filename, fileExtension, predictionObj, base64Data);
+        const kwispPayload = {
+            "sender": "CI",
+            "receiver": "Heijmans",
+            "instigator": "concrete-innovation",
+            "case": {
+                "type": "Bridge", // Or make this dynamic/configurable?
+                "id": caseId,
+                "agreement": {
+                    "type": "Test-Agreement",
+                    "designation": agreementDesignation
+                },
+                // Generalized comments for batch
+                "commentDescriptionShort": `Batch crack detection report for ${selectedItems.length} images.`,
+                "commentDescriptionExtensive": `Crack detection analysis performed on ${selectedItems.length} selected images. See attachments for details. Files: ${selectedItems.map(item => item.filename).join(', ')}`,
+                "attachments": [] // Initialize attachments array
+            }
+        };
 
-        // Call the function to send data to Kwisp
-        await sendToKwisp(kwispPayload);
-        res.json({ success: true, message: "Data sent to Kwisp successfully." });
+        // --- Process and Add Attachments ---
+        for (const item of selectedItems) {
+            const { imageDataUrl, filename, predictionObj } = item;
+
+            if (!imageDataUrl || !filename || !predictionObj) {
+                 console.warn(`Skipping item due to missing data: ${filename || 'Unknown'}`);
+                 continue; // Skip this item if data is incomplete
+            }
+
+            // Extract Base64 data and determine file extension (Refactored into helper)
+            const { base64Data, fileExtension } = extractBase64AndExtension(imageDataUrl);
+
+            // Create the attachment object for this item (Refactored into helper)
+            const attachment = createKwispAttachment(filename, fileExtension, predictionObj, base64Data);
+            kwispPayload.case.attachments.push(attachment);
+        }
+
+         // Check if any valid attachments were actually added
+         if (kwispPayload.case.attachments.length === 0) {
+            throw new Error("No valid items could be processed for the batch.");
+         }
+
+
+        // --- Send the Combined Payload to Kwisp ---
+        console.log(`Sending batch payload with ${kwispPayload.case.attachments.length} attachments to Kwisp.`);
+        await sendToKwisp(kwispPayload); // Use the existing sender function
+
+        // --- Send Success Response ---
+        res.json({ success: true, message: `Batch report for ${kwispPayload.case.attachments.length} items sent successfully.` });
+
     } catch (error) {
-        console.error("Error sending data to Kwisp:", error);
-        res.status(500).json({ success: false, message: error.message || 'Failed to send data to Kwisp.' });
+        console.error(`Error processing /send-batch-to-kwisp:`, error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to send batch data to Kwisp due to an internal error.'
+        });
     }
 });
 
@@ -235,17 +309,10 @@ async function callAzurePredictionAPI(imageBuffer) {
         });
 
         console.log(`Azure Response Status Code: ${response.status}`);
-        console.log(`Azure Response Data:`, response.data); // Log the response data
 
-        // --- Process the Azure response ---
-        // Axios automatically parses JSON responses by default
-        // IMPORTANT: Adjust how you access the prediction based on YOUR Azure endpoint's output!
-        if (response.data && (response.data.prediction || response.data.predicted_label || Object.keys(response.data).length > 0)) {
-             // Attempt to standardize the output slightly if possible
-            if (response.data.predicted_label && !response.data.prediction) {
-                 response.data.prediction = response.data.predicted_label;
-            }
-            return response.data; // Return the parsed JSON data
+        // Axios automatically parses JSON responses, so we can directly access response.data
+        if (response.data && Object.keys(response.data).length > 0) {
+            return response.data; 
         } else {
             console.error("Prediction key not found or unexpected response structure:", response.data);
             throw new Error("Received an unexpected response structure from Azure AI service.");
@@ -254,8 +321,7 @@ async function callAzurePredictionAPI(imageBuffer) {
     } catch (error) {
         console.error("Error calling Azure AI service:");
         if (error.response) {
-            // The request was made and the server responded with a status code
-            // that falls out of the range of 2xx
+            // The request was made and the server responded with a status code that falls out of the range of 2xx
             console.error('Status:', error.response.status);
             console.error('Headers:', error.response.headers);
             console.error('Data:', error.response.data);
@@ -277,94 +343,101 @@ async function callAzurePredictionAPI(imageBuffer) {
     }
 }
 
+// --- NEW/REFACTORED: Helper to extract Base64 and Extension ---
+function extractBase64AndExtension(imageDataUrl) {
+    const base64Marker = ';base64,';
+    const markerIndex = imageDataUrl.indexOf(base64Marker);
+    if (markerIndex === -1) {
+        throw new Error("Invalid image data format received.");
+    }
+    const base64Data = imageDataUrl.substring(markerIndex + base64Marker.length);
+    const mimeTypeString = imageDataUrl.substring(imageDataUrl.indexOf(':') + 1, imageDataUrl.indexOf(';'));
+    // Provide a default extension if mime type parsing fails
+    let fileExtension = '.jpg';
+    if (mimeTypeString && mimeTypeString.includes('/')) {
+        const extensionPart = mimeTypeString.split('/')[1];
+        if (extensionPart) {
+            fileExtension = `.${extensionPart.toLowerCase()}`;
+        }
+    }
+    return { base64Data, fileExtension };
+}
+
+// --- NEW/REFACTORED: Helper to create a single Kwisp Attachment object ---
+function createKwispAttachment(filename, fileExtension, predictionObj, base64Data) {
+    // Convert boolean prediction back to string if needed, or adjust based on API expectation
+    const predictionText = typeof predictionObj?.prediction === 'boolean'
+        ? (predictionObj.prediction ? 'Crack Detected' : 'No Crack Detected')
+        : (predictionObj?.prediction || 'N/A');
+    const confidenceText = predictionObj?.confidence?.toFixed(3) || 'N/A';
+
+    return {
+        "type": fileExtension.startsWith('.') ? fileExtension.substring(1) : fileExtension, // Kwisp might want "jpeg" not ".jpeg"
+        "class": "file",
+        "designation": filename,
+        "base64String": base64Data,
+        "description": `Image: ${filename}. Result: ${predictionText}. Confidence: ${confidenceText}.` // Dynamic description per image
+    };
+}
+
+
 /**
  * Send data to Kwisp API
  * @param {Object} payload - The payload object to be sent to the Kwisp API
+ * @returns {Promise<boolean>} - Returns true if the API call is accepted (status 202)
  * @description This function sends the payload to the Kwisp API using Axios.
- * It handles the response and errors appropriately.
- * @throws {Error} - Throws an error if the API call fails or if the response structure is unexpected.
- * @throws {Error} - Throws an error if the Kwisp API URL is not configured.
- * @throws {Error} - Throws an error if the payload is not valid.
+ * It handles the response and throws detailed errors on failure.
+ * @throws {Error} - Throws an error if the API call fails, receives an unexpected status,
+ *                   or if the Kwisp API URL is not configured (implicit check needed).
+ * @throws {Error} - Throws an error if the payload is not valid (implicit).
  */
 async function sendToKwisp(payload) {
-    try {
-        // Make the POST request to the Kwisp API
-        console.log(`Sending request to Kwisp API: ${HEIJMANS_KWISP_API_URL}`);
+    if (!HEIJMANS_KWISP_API_URL || !HEIJMANS_KWISP_API_URL) {
+        console.error("FATAL ERROR: Required environment variables for Kwisp API are not set.");
+        throw new Error("FATAL ERROR: Required environment variables for Kwisp API are not set.");
+    }
 
+    console.log(`Sending request to Kwisp API: ${HEIJMANS_KWISP_API_URL}`);
+    try {
         const kwispResponse = await axios.post(HEIJMANS_KWISP_API_URL, payload, {
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Ocp-Apim-Subscription-Key': HEIJMANS_KWISP_API_KEY, // Kwisp API Key (if needed)
+                // Add other necessary Kwisp API headers here if needed
             },
             timeout: 30000 // 30 second timeout
         });
 
-        // Check for 202 Accepted response (or other success codes if applicable)
+        // Check specifically for 202 Accepted response
         if (kwispResponse.status === 202) {
             console.log("Kwisp API accepted the request (Status 202).");
-            res.json({ success: true, message: "Data sent to Kwisp successfully." });
+            return true; // Signal success back to the route handler
         } else {
-            // Handle unexpected success codes if necessary
             console.warn(`Kwisp API returned unexpected success status: ${kwispResponse.status}`);
-            res.status(kwispResponse.status).json({ success: false, message: `Kwisp API returned status ${kwispResponse.status}` });
+            throw new Error(`Kwisp API returned unexpected status ${kwispResponse.status}`);
         }
 
     } catch (error) {
         console.error("Error calling Kwisp API:");
         let errorMessage = "Failed to send data to Kwisp.";
+        // Check if it's an Axios error with a response from the server
         if (error.response) {
             console.error('Status:', error.response.status);
             console.error('Headers:', error.response.headers);
             console.error('Data:', error.response.data);
             errorMessage = `Kwisp API Error: ${error.response.status} - ${JSON.stringify(error.response.data)}`;
-            res.status(error.response.status).json({ success: false, message: errorMessage });
         } else if (error.request) {
+            // The request was made but no response was received
             console.error('Request Error:', error.request);
             errorMessage = "Network error: No response received from Kwisp API.";
-            res.status(504).json({ success: false, message: errorMessage }); // Gateway Timeout
+            // error.statusCode = 504; // Gateway Timeout (optional)
         } else {
+            // Something happened in setting up the request or a non-Axios error
             console.error('Error:', error.message);
-            errorMessage = `An unexpected error occurred: ${error.message}`;
-            res.status(500).json({ success: false, message: errorMessage }); // Internal Server Error
+            // Use the original error message if it's not an Axios issue
+            errorMessage = error.message || errorMessage;
+            error.statusCode = 500; // Internal Server Error
         }
+        throw new Error(errorMessage);
     }
-}
-
-/**
- * Create the payload for Kwisp API
- * @param {*} filename - The name of the file uploaded
- * @param {*} fileExtension - The file extension (e.g., .jpeg, .png)
- * @param {*} predictionObj - The prediction object returned from Azure
- * @param {*} predictionObj.prediction - The prediction result (e.g., "crack", "no crack")
- * @param {*} predictionObj.confidence - The confidence score of the prediction
- * @param {*} base64Data - The base64 encoded string of the image data
- * @returns {Object} - The payload object to be sent to Kwisp API
- * @description This function constructs the payload for the Kwisp API based on the provided parameters.
- */
-function createKwispPayload(filename, fileExtension, predictionObj, base64Data) {
-    
-    // Construct the complex JSON payload
-    const kwispPayload = {
-        "sender": "CI",
-        "receiver": "Heijmans",
-        "instigator": "concrete-innovation",
-        "case": {
-            "type": "Bridge",
-            "id": "fbfb54a7-d918-4768-9991-0bb3374efb7c",
-            "agreement": {
-                "type": "Test-Agreement",
-                "designation": "HEIJ123"
-            },
-            "commentDescriptionShort": `Prediction Result: ${predictionObj?.prediction || 'N/A'}. File: ${filename}`,
-            "commentDescriptionExtensive": `Crack detection analysis performed on image ${filename}. Result: ${predictionObj?.prediction || 'N/A'}. Confidence: ${predictionObj?.confidence?.toFixed(3) || 'N/A'}`,
-            "attachments": [{
-                "type": fileExtension, // Dynamic based on upload
-                "class": "file",
-                "designation": filename, // Dynamic based on upload
-                "base64String": base64Data, // Dynamic based on upload
-                "description": `Image uploaded for crack detection. Result: ${predictionObj?.prediction || 'N/A'}` // Dynamic
-            }]
-        }
-    };
-
-    return kwispPayload;
 }

@@ -1,159 +1,210 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prediction Results</title> <!-- Changed title -->
+    <!-- ... head content ... -->
+    <title>Classification Results</title>
+    <link rel="icon" href="/images/heijmans-favicon.ico" type="image/png">
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <div class="container">
         <header class="page-header">
+            <h1>Classification Results</h1>
             <img src="/images/heijmans-logo.png" alt="Heijmans Logo" class="header-logo">
-            <h1>Prediction Results</h1> <!-- Changed title -->
         </header>
 
-        <!-- *** LOOP through the results array *** -->
         <% if (typeof results !== 'undefined' && results.length > 0) { %>
-            <% results.forEach((result, index) => { %>
 
-                <!-- Section container for each result -->
-                <div class="result-item card highlight-border"> <!-- Added class -->
+            <div class="results-scroll-container">
+                <% results.forEach((result, index) => { %>
+                    <div class="result-item card highlight-border">
 
-                    <div class="info-section"> <!-- Keep this class for consistency -->
-                         <p>File Uploaded: <strong><%= result.filename %></strong></p>
-                    </div>
-
-                    <div class="prediction-section"> <!-- Keep this class -->
-                        <h2>Prediction Result #<%= index + 1 %></h2> <!-- Number each result -->
-
-                        <% if (result.prediction) { %>
-                            <!-- *** Use unique IDs for hidden inputs *** -->
-                            <input type="hidden" id="imageDataUrl_<%= result.id %>" value="<%= result.imageDataUrl %>">
-                            <input type="hidden" id="imageFilename_<%= result.id %>" value="<%= result.filename %>">
-                            <input type="hidden" id="predictionData_<%= result.id %>" value="<%= JSON.stringify(result.prediction) %>">
-
-                            <% if (result.prediction.prediction) { %>
-                                <div class="prediction-summary">
-                                     <p class="result-label">Result: <%= result.prediction.prediction %></p>
-                                </div>
-                            <% } else { %>
-                                <div class="prediction-summary">
-                                     <p><em>Standard 'prediction' key not found.</em></p>
-                                 </div>
-                            <% } %>
-                            <% if (typeof result.prediction.confidence === 'number') { %>
-                                <div class="prediction-confidence">
-                                     <p>Confidence: <%= result.prediction.confidence.toFixed(3) %></p>
-                                </div>
-                            <% } %>
-
-                            <hr class="section-divider">
-
-                            <div class="raw-response-details">
-                                <h3>Full Azure Response:</h3>
-                                <pre><%= JSON.stringify(result.prediction, null, 2) %></pre>
-                             </div>
-
-                            <div class="kwisp-action-section">
-                                <!-- *** Add data-result-id attribute to button *** -->
-                                <!-- *** Use unique ID for the button itself *** -->
-                                <button type="button" id="sendKwispBtn_<%= result.id %>" class="button-secondary kwisp-button" data-result-id="<%= result.id %>">
-                                    Send Report to Kwisp
-                                </button>
-                                <!-- *** Use unique ID for status span *** -->
-                                <span id="kwispStatus_<%= result.id %>" class="kwisp-status"></span>
+                        <div class="prediction-section">
+                            <!-- Add checkbox for each result -->
+                            <!-- This checkbox is used to select results for batch actions -->
+                            <div class="result-header">
+                                <h2 id="heading_<%= result.id %>">
+                                    <label for="checkbox_<%= result.id %>" class="checkbox-label-wrapper"> <!-- Make heading clickable for checkbox -->
+                                        Result #<%= index + 1 %> - <%= result.filename %>
+                                    </label>
+                                </h2>
+                                <input type="checkbox"
+                                       class="kwisp-select-checkbox visually-hidden"
+                                       id="checkbox_<%= result.id %>"
+                                       data-result-id="<%= result.id %>"
+                                       aria-labelledby="heading_<%= result.id %>">
+                                <label for="checkbox_<%= result.id %>" class="select-toggle-button">
+                                    <!-- Text will be handled by CSS potentially -->
+                                    Select
+                                </label>
                             </div>
 
-                        <% } else { %>
-                            <div class="error-message">
-                                <p style="color: red;">Error: No prediction data received for this file.</p>
-                             </div>
-                        <% } %>
-                    </div>
-                </div> <!-- End of .result-item -->
+                            <% if (result.prediction) { %>
+                                <!-- Hidden inputs -->
+                                <input type="hidden" id="imageDataUrl_<%= result.id %>" value="<%= result.originalImageDataUrl %>">
+                                <input type="hidden" id="imageFilename_<%= result.id %>" value="<%= result.filename %>">
+                                <input type="hidden" id="predictionData_<%= result.id %>" value="<%= JSON.stringify(result.prediction) %>">
 
-                 <% if (index < results.length - 1) { %>
-                      <hr class="major-divider"> <!-- Optional: Divider between results -->
-                 <% } %>
+                                <!-- Display Text Results -->
+                                <% if (typeof result.prediction.prediction === 'boolean') { %>
+                                    <div class="prediction-summary">
+                                        <p class="result-label">Result: <%= result.prediction.prediction ? 'Crack Detected' : 'No Crack Detected' %></p>
+                                    </div>
+                                <% } else { %>
+                                    <div class="prediction-summary">
+                                        <p class="result-label">Result: <%= result.prediction.prediction %></p>
+                                    </div>
+                                <% } %>
+                                <% if (typeof result.prediction.confidence === 'number') { %>
+                                    <div class="prediction-confidence">
+                                        <p>Confidence: <%= result.prediction.confidence.toFixed(2) %></p>
+                                    </div>
+                                <% } %>
 
-            <% }) %> <!-- End of forEach loop -->
+                                <!-- Wrapper for Side-by-Side Images -->
+                                <div class="image-comparison-wrapper">
+                                     <!-- Classified Image -->
+                                     <% if (result.classifiedImageDataUrl) { %>
+                                        <div class="classified-image-container">
+                                            <h4>Classified Image:</h4>
+                                            <img src="<%= result.classifiedImageDataUrl %>" alt="Classified image for <%= result.filename %>" class="classified-image">
+                                        </div>
+                                    <% } else { %>
+                                        <div class="classified-image-container placeholder">
+                                            <h4>Classified Image:</h4>
+                                            <p><em>(Not provided)</em></p>
+                                        </div>
+                                    <% } %>
+                                    <!-- Original Image -->
+                                    <div class="original-image-container">
+                                        <h4>Original Image:</h4>
+                                        <img src="<%= result.originalImageDataUrl %>" alt="Original image for <%= result.filename %>" class="original-image">
+                                    </div>
+                                </div>
+
+                                <hr class="section-divider">
+
+                            <% } else { %>
+                                <div class="error-message">
+                                    <p style="color: red;">Error: No prediction data received for this file.</p>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div> <!-- End of .result-item -->
+
+                    <% if (index < results.length - 1) { %>
+                         <hr class="major-divider">
+                    <% } %>
+
+                <% }) %> <!-- End of forEach loop -->
+            </div> <!-- End of .results-scroll-container -->
 
         <% } else { %>
-            <!-- Handle case where results array might be empty or undefined (though unlikely with checks) -->
             <div class="card highlight-border">
-                 <p>No prediction results to display.</p>
+                <p>No prediction results to display.</p>
             </div>
         <% } %>
 
+        <hr class="major-divider">
 
-        <hr class="major-divider"> <!-- Divider before final link -->
-
-        <div class="actions-section">
-            <a href="/" class="button-link">Upload More Images</a> <!-- Changed text -->
+        <!--Send Selected to Kwisp Button-->
+        <div class="global-actions-section card">
+            <button type="button" id="sendSelectedKwispBtn" class="button-primary">Send Selected to Kwisp</button>
+            <span id="batchKwispStatus" class="kwisp-status"></span>
+            <a href="/" class="button-link" style="margin-left: auto;">Upload More Images</a> <!-- Moved link here -->
         </div>
+    </div> <!-- End of .container -->
 
-    </div>
-
+    <!-- JavaScript for handling batch sending to Kwisp -->
     <script>
-        // Select ALL Kwisp buttons using a common class
-        const sendKwispBtns = document.querySelectorAll('.kwisp-button');
+        const sendBatchBtn = document.getElementById('sendSelectedKwispBtn');
+        const batchStatus = document.getElementById('batchKwispStatus');
 
-        // Add event listener to each button
-        sendKwispBtns.forEach(button => {
-            button.addEventListener('click', async (event) => {
-                const clickedButton = event.target;
-                // Get the unique result ID from the button's data attribute
-                const resultId = clickedButton.dataset.resultId;
+        if (sendBatchBtn) { // Check if the button exists (i.e., if there are results)
+            sendBatchBtn.addEventListener('click', async () => {
+                // Find all checked checkboxes
+                const checkedBoxes = document.querySelectorAll('.kwisp-select-checkbox:checked');
 
-                // Find the corresponding status span and hidden inputs using the ID
-                const kwispStatus = document.getElementById(`kwispStatus_${resultId}`);
-                const imageDataUrlInput = document.getElementById(`imageDataUrl_${resultId}`);
-                const imageFilenameInput = document.getElementById(`imageFilename_${resultId}`);
-                const predictionDataInput = document.getElementById(`predictionData_${resultId}`);
-
-                if (!kwispStatus || !imageDataUrlInput || !imageFilenameInput || !predictionDataInput) {
-                    console.error("Could not find associated elements for result ID:", resultId);
-                    if(kwispStatus) kwispStatus.textContent = 'Internal page error.';
-                    return; // Stop if elements aren't found
+                if (checkedBoxes.length === 0) {
+                    batchStatus.textContent = 'Please select at least one result to send.';
+                    batchStatus.className = 'kwisp-status error';
+                    return; // Stop if nothing is selected
                 }
 
-                kwispStatus.textContent = 'Sending...';
-                kwispStatus.className = 'kwisp-status sending';
-                clickedButton.disabled = true;
+                // Prepare status update and disable button
+                batchStatus.textContent = 'Preparing data...';
+                batchStatus.className = 'kwisp-status sending';
+                sendBatchBtn.disabled = true;
 
-                try {
-                    const response = await fetch('/send-to-kwisp', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            // Send data specific to this result
+                // Gather data for selected items
+                const selectedItemsData = [];
+                let errorInData = false;
+
+                checkedBoxes.forEach(checkbox => {
+                    const resultId = checkbox.dataset.resultId;
+                    const imageDataUrlInput = document.getElementById(`imageDataUrl_${resultId}`);
+                    const imageFilenameInput = document.getElementById(`imageFilename_${resultId}`);
+                    const predictionDataInput = document.getElementById(`predictionData_${resultId}`);
+
+                    if (!imageDataUrlInput || !imageFilenameInput || !predictionDataInput) {
+                        console.error("Could not find associated elements for result ID:", resultId);
+                        errorInData = true; // Mark error
+                        return; // Skip this item
+                    }
+
+                    try {
+                         selectedItemsData.push({
+                            // Only send necessary data to backend
                             imageDataUrl: imageDataUrlInput.value,
                             filename: imageFilenameInput.value,
-                            prediction: JSON.parse(predictionDataInput.value)
-                        }),
+                            predictionObj: JSON.parse(predictionDataInput.value) // Parse prediction data here
+                        });
+                    } catch (parseError) {
+                        console.error("Error parsing prediction data for result ID:", resultId, parseError);
+                        errorInData = true; // Mark error
+                    }
+                });
+
+                // If critical data was missing or failed to parse for any selected item
+                if (errorInData) {
+                    batchStatus.textContent = 'Error: Could not gather data for all selected items. Check console.';
+                    batchStatus.className = 'kwisp-status error';
+                    sendBatchBtn.disabled = false; // Re-enable button
+                    return;
+                }
+
+                // Send data to the backend endpoint
+                batchStatus.textContent = `Sending ${selectedItemsData.length} item(s)...`;
+                try {
+                    const response = await fetch('/send-batch-to-kwisp', { 
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ selectedItems: selectedItemsData }), // Send data array wrapped in an object
                     });
 
-                    const result = await response.json();
+                    const result = await response.json(); // Assume backend always sends JSON
 
                     if (response.ok && result.success) {
-                        kwispStatus.textContent = 'Sent successfully!';
-                        kwispStatus.className = 'kwisp-status success';
-                        // Optionally keep button disabled or hide it
+                        batchStatus.textContent = `Successfully sent ${selectedItemsData.length} item(s) to Kwisp!`;
+                        batchStatus.className = 'kwisp-status success';
+                        // Optionally: uncheck boxes, keep button disabled, etc.
+                        // checkedBoxes.forEach(cb => cb.checked = false);
                     } else {
-                        kwispStatus.textContent = `Error: ${result.message || 'Failed to send.'}`;
-                        kwispStatus.className = 'kwisp-status error';
-                        clickedButton.disabled = false; // Re-enable on failure
+                        batchStatus.textContent = `Error: ${result.message || 'Failed to send batch.'}`;
+                        batchStatus.className = 'kwisp-status error';
+                        sendBatchBtn.disabled = false; // Re-enable on failure
                     }
                 } catch (error) {
-                    console.error('Fetch error:', error);
-                    kwispStatus.textContent = 'Error: Network issue or server unavailable.';
-                    kwispStatus.className = 'kwisp-status error';
-                    clickedButton.disabled = false;
+                    console.error('Fetch error sending batch:', error);
+                    batchStatus.textContent = 'Error: Network issue or server unavailable.';
+                    batchStatus.className = 'kwisp-status error';
+                    sendBatchBtn.disabled = false; // Re-enable on network error
                 }
             });
-        });
-    </script>
+        } else {
+             console.log("Send batch button not found (likely no results).");
+        }
 
+    </script>
 </body>
 </html>
