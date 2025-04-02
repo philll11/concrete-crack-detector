@@ -1,99 +1,139 @@
 /* public/css/style.css */
 
-/* --- Base Styles & Variables (Optional but good practice) --- */
-:root {
+/* ==========================================================================
+   1. Variables & Base Styles
+   ========================================================================== */
+
+   :root {
     --heijmans-blue: #004488;
-    /* Adjust hex code if you have the exact one */
     --heijmans-yellow: #FFC107;
-    /* Adjust hex code if you have the exact one */
+    --heijmans-yellow-rgb: 255, 193, 7; /* For box-shadow focus */
     --heijmans-red: #DC3545;
-    /* Standard Bootstrap red, adjust if needed */
     --heijmans-white: #ffffff;
     --light-gray: #f4f4f4;
     --medium-gray: #dddddd;
     --dark-gray: #555555;
     --text-color: #333333;
+    --success-green: #28a745;
 }
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    /* Clean sans-serif */
     margin: 0;
-    /* Remove default body margin */
     padding: 0;
-    /* Remove default body padding */
     background-color: var(--light-gray);
-    /* Light gray background for contrast */
     color: var(--text-color);
     line-height: 1.6;
 }
 
-/* --- Main Container --- */
+/* Basic link styling */
+a {
+    color: var(--heijmans-blue);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: #003366;
+    text-decoration: underline;
+}
+
+/* Basic heading styling (can be overridden) */
+h1, h2, h3, h4 {
+    color: var(--heijmans-blue);
+    margin-top: 0; /* Common reset */
+}
+
+/* Horizontal Rule Styling */
+hr {
+    border: 0;
+    height: 1px;
+    background-color: var(--medium-gray);
+    margin: 25px 0;
+}
+
+hr.major-divider {
+    height: 2px;
+    margin: 40px 0;
+}
+
+/* ==========================================================================
+   2. Utility Classes
+   ========================================================================== */
+
+/* Utility class to visually hide elements but keep them accessible */
+.visually-hidden {
+    position: absolute !important;
+    height: 1px; width: 1px;
+    overflow: hidden;
+    clip: rect(1px, 1px, 1px, 1px);
+    white-space: nowrap; /* Avoid line breaks */
+  }
+
+/* ==========================================================================
+   3. Layout Structure
+   ========================================================================== */
+
 .container {
-    max-width: 750px;
-    /* Max width of main content */
+    max-width: 1500px; /* Adjusted max width */
     margin: 40px auto;
-    /* Center container on the page */
     background-color: var(--heijmans-white);
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    /* Subtle shadow */
-    overflow: hidden;
-    /* Ensure child margins don't collapse outside */
-}
-
-/* --- Page Header --- */
-
-/* Style for the logo image itself */
-.header-logo {
-    display: block;
-    height: 150px;
-    width: auto;
+    overflow: hidden; /* Contains floats and margins */
 }
 
 .page-header {
     background-color: var(--heijmans-blue);
     color: var(--heijmans-white);
     padding: 20px 25px;
-    /* More padding */
     margin: 0;
-    /* Remove margin */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.header-logo {
+    height: 150px;
+    width: auto;
+    display: block;
+    flex-shrink: 0;
 }
 
 .page-header h1 {
     margin: 0;
     font-size: 1.8em;
-    /* Larger heading */
     font-weight: 600;
+    color: var(--heijmans-white); /* Override default blue heading color */
+    margin: 0; /* Ensure no extra margins interfere */
 }
 
-/* --- Card Styling (for distinct sections) --- */
+/* ==========================================================================
+   4. Components
+   ========================================================================== */
+
+/* --- Cards --- */
 .card {
     border: 1px solid var(--medium-gray);
-    /* Default subtle border */
     border-radius: 6px;
     padding: 20px 25px;
     margin: 25px;
-    /* Margin inside the container */
     background-color: var(--heijmans-white);
-    /* Ensure white background if needed */
 }
 
-/* Optional: Add Heijmans yellow border to cards */
 .card.highlight-border {
     border-left: 5px solid var(--heijmans-yellow);
+    /* Keep other borders subtle */
     border-top: 1px solid var(--medium-gray);
     border-right: 1px solid var(--medium-gray);
     border-bottom: 1px solid var(--medium-gray);
 }
 
-
 /* --- Flash Messages --- */
 .flash-container {
     padding: 0 25px;
-    /* Align with card padding */
     margin-top: 25px;
-    /* Add space above if it's the first element */
+    margin-bottom: -10px; /* Pull subsequent content up slightly */
 }
 
 .flash {
@@ -112,29 +152,22 @@ body {
     background-color: #f8d7da;
     color: #721c24;
     border-color: var(--heijmans-red);
-    /* Use Heijmans Red for border */
 }
 
 .flash-info {
-    /* Example: Use Blue for info */
     background-color: #cce5ff;
     color: #004085;
     border-color: var(--heijmans-blue);
 }
 
 .flash-success {
-    /* Example: Use Yellow for success */
     background-color: #fff3cd;
     color: #856404;
     border-color: var(--heijmans-yellow);
 }
 
-
 /* --- Forms --- */
-.upload-section {
-    /* Inherits .card style */
-}
-
+/* Uses .card for base styling */
 .upload-form .form-group {
     margin-bottom: 18px;
 }
@@ -143,23 +176,18 @@ body {
     display: block;
     margin-bottom: 6px;
     color: var(--heijmans-blue);
-    /* Blue labels */
     font-weight: 600;
-    /* Bolder labels */
 }
 
 .upload-form input[type="file"] {
     display: block;
     width: 100%;
-    /* Full width */
     padding: 8px 10px;
     border: 1px solid var(--medium-gray);
     border-radius: 4px;
     box-sizing: border-box;
-    /* Include padding/border in width */
 }
 
-/* Style the file input button (browser support varies) */
 .upload-form input[type="file"]::file-selector-button {
     background-color: var(--heijmans-yellow);
     color: var(--heijmans-blue);
@@ -173,155 +201,270 @@ body {
 }
 
 .upload-form input[type="file"]::file-selector-button:hover {
-    background-color: #e0a800;
-    /* Darker yellow */
+    background-color: #e0a800; /* Darker yellow */
 }
-
 
 .upload-form .form-actions {
     margin-top: 20px;
     text-align: right;
-    /* Align button to the right */
 }
 
 /* --- Buttons --- */
-button {
+/* Base button style */
+button,
+.button-link { /* Apply base styles to link buttons too */
+    display: inline-block; /* Necessary for padding on links */
     padding: 10px 20px;
-    background-color: var(--heijmans-blue);
-    /* Blue background */
-    color: var(--heijmans-white);
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 1em;
     font-weight: 600;
-    transition: background-color 0.2s ease-in-out;
+    text-align: center;
+    text-decoration: none; /* Remove underline from links styled as buttons */
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+    user-select: none;
 }
 
-button:hover {
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Primary Button Style (Default <button> and specific class) */
+button,
+.button-primary {
+    background-color: var(--heijmans-blue);
+    color: var(--heijmans-white);
+}
+button:hover:not(:disabled),
+.button-primary:hover:not(:disabled) {
+    background-color: #003366; /* Darker Blue */
+}
+button:disabled,
+.button-primary:disabled {
+     background-color: #6c757d; /* Grey out when disabled */
+}
+
+
+/* Link styled as button (e.g., Upload More) */
+.button-link {
+    background-color: var(--heijmans-yellow);
+    color: var(--heijmans-blue);
+}
+.button-link:hover {
+    background-color: #e0a800; /* Darker yellow */
+    color: var(--heijmans-blue); /* Keep text color */
+    text-decoration: none; /* Keep underline off */
+}
+
+
+/* Select Toggle Button (Checkbox replacement) */
+.select-toggle-button {
+    display: inline-block; /* Allow padding and width */
+    padding: 6px 15px;    /* Button padding */
+    border: 1px solid var(--medium-gray); /* Default border */
+    background-color: var(--light-gray); /* Default background */
+    color: var(--dark-gray);           /* Default text color */
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 600;
+    text-align: center;
+    min-width: 90px; /* Ensure minimum width */
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    user-select: none; /* Prevent text selection on double click */
+    margin-left: 15px; /* Keep space from heading */
+    flex-shrink: 0;    /* Prevent shrinking */
+}
+
+.select-toggle-button:hover {
+    background-color: var(--medium-gray);
+    border-color: var(--dark-gray);
+}
+
+.kwisp-select-checkbox + .select-toggle-button::before {
+    content: 'Select';
+}
+.kwisp-select-checkbox:checked + .select-toggle-button::before {
+    content: 'Selected';
+}
+
+/* Hide original label text, use pseudo-element */
+.select-toggle-button {
+    font-size: 0; /* Hide original text */
+}
+.select-toggle-button::before {
+    font-size: 0.9rem; /* Set font size for pseudo-element text */
+    display: inline-block;
+}
+
+/* Checked State */
+.kwisp-select-checkbox:checked + .select-toggle-button {
+    background-color: var(--heijmans-blue);
+    color: var(--heijmans-white);
+    border-color: var(--heijmans-blue);
+}
+.kwisp-select-checkbox:checked + .select-toggle-button:hover {
     background-color: #003366;
-    /* Darker Blue on hover */
+    border-color: #003366;
 }
 
-/* --- Result Page Specifics --- */
-.info-section {
-    /* Inherits .card style */
-    font-weight: 500;
+/* Focus State */
+.kwisp-select-checkbox:focus + .select-toggle-button {
+    outline: 2px solid var(--heijmans-yellow);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(var(--heijmans-yellow-rgb), 0.5);
 }
 
-.info-section strong {
-    color: var(--heijmans-blue);
+
+/* ==========================================================================
+   5. Page Specific: Results Page
+   ========================================================================== */
+
+/* --- Scrollable Results Area --- */
+.results-scroll-container {
+    max-height: 70vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 15px; /* Reduced padding */
+    margin: 25px; /* Use container margin */
+    border: 1px solid var(--medium-gray);
+    border-radius: 6px;
+    background-color: #fdfdfd;
 }
 
-.prediction-section {
-    /* Inherits .card style */
+/* --- Individual Result Item --- */
+/* Uses .card.highlight-border for base */
+.results-scroll-container .result-item {
+     margin-left: 0;
+     margin-right: 0;
+     margin-top: 0;
+     margin-bottom: 25px;
+     padding: 0; /* Remove card padding if sections handle it */
+}
+.results-scroll-container .result-item:last-child {
+    margin-bottom: 0;
 }
 
-.prediction-section h2 {
-    margin-top: 0;
+/* Section within result item */
+.result-item .prediction-section {
+    padding: 20px 25px; /* Re-apply padding here if removed from card */
+}
+
+
+/* Result Item Header (Filename + Toggle) */
+.result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-bottom: 15px;
-    padding-bottom: 10px;
     border-bottom: 2px solid var(--heijmans-yellow);
-    /* Yellow underline for heading */
-    color: var(--heijmans-blue);
-    /* Blue heading */
-    font-size: 1.4em;
+    padding-bottom: 10px;
 }
 
+.result-header h2 {
+    border-bottom: none;
+    padding-bottom: 0;
+    font-size: 1.3em;
+    /* Prevent long filenames from breaking layout */
+    max-width: calc(100% - 120px); /* Adjust based on button width+margin */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* --- Prediction Text Results --- */
 .prediction-summary .result-label {
     font-size: 1.3em;
     font-weight: bold;
     color: var(--heijmans-blue);
-    /* Use Blue for the result text */
-    margin-bottom: 15px;
-    /* We avoid using only color for status (e.g. red for crack) for accessibility */
+    margin-bottom: 10px;
+    margin-top: 15px; /* Add some space above */
 }
 
 .prediction-confidence p {
     font-size: 1.1em;
     color: var(--dark-gray);
-    margin-bottom: 15px;
+    margin-bottom: 20px; /* Space before images */
+    margin-top: 0;
 }
 
-.raw-response-details h3 {
-    font-size: 1.1em;
-    color: var(--dark-gray);
-    margin-bottom: 8px;
-    font-weight: 600;
+/* --- Image Comparison Area --- */
+.image-comparison-wrapper {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    /* No border/padding needed if handled by containers */
 }
 
-/* Code Block Styling */
-pre {
-    background-color: var(--light-gray);
-    /* Light gray background */
+.image-comparison-wrapper .classified-image-container,
+.image-comparison-wrapper .original-image-container {
+    flex: 1;
+    min-width: 0; /* Allow shrinking */
+    border: 1px solid var(--light-gray); /* Optional subtle border per image */
     padding: 15px;
-    border: 1px solid var(--medium-gray);
-    border-left: 4px solid var(--heijmans-blue);
-    /* Blue left border */
-    overflow-x: auto;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    border-radius: 0 4px 4px 0;
-    /* Rounded corners except top-left */
-    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-    /* Monospace font */
-    font-size: 0.9em;
-    color: var(--text-color);
-}
-
-/* --- Links & Actions --- */
-a {
-    color: var(--heijmans-blue);
-    /* Blue links */
-    text-decoration: none;
-    /* No underline by default */
-    transition: color 0.2s ease;
-}
-
-a:hover {
-    color: #003366;
-    /* Darker blue on hover */
-    text-decoration: underline;
-    /* Underline on hover */
-}
-
-.actions-section {
-    text-align: center;
-    margin: 25px;
-    /* Margin inside the container */
-    padding-top: 10px;
-    /* Space above the link */
-}
-
-/* Style the "Upload Another" link like a secondary button */
-.button-link {
-    display: inline-block;
-    padding: 10px 20px;
-    background-color: var(--heijmans-yellow);
-    /* Yellow background */
-    color: var(--heijmans-blue);
-    /* Blue text */
-    border: none;
     border-radius: 4px;
-    cursor: pointer;
-    text-decoration: none;
-    /* Remove underline from link */
-    font-size: 1em;
+    background-color: #fafafa; /* Slightly different background */
+}
+
+/* Headings inside image containers */
+.image-comparison-wrapper h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.0em;
+    color: var(--dark-gray);
     font-weight: 600;
-    transition: background-color 0.2s ease-in-out;
+    text-align: center;
 }
 
-.button-link:hover {
-    background-color: #e0a800;
-    /* Darker yellow */
-    color: var(--heijmans-blue);
-    text-decoration: none;
+/* Images inside containers */
+.image-comparison-wrapper img { /* Target both images */
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 5px auto 0;
+    border: 1px solid var(--medium-gray);
+    border-radius: 4px;
 }
 
-/* --- Optional Divider --- */
-.section-divider {
-    border: 0;
-    height: 1px;
-    background-color: var(--medium-gray);
-    margin: 25px 0;
+/* Placeholder for missing classified image */
+.image-comparison-wrapper .classified-image-container.placeholder {
+    border-style: dashed;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px; /* Ensure placeholder has size */
+}
+.image-comparison-wrapper .classified-image-container.placeholder p {
+    margin: 0;
+    font-style: italic;
+    color: var(--dark-gray);
+}
+
+/* --- Global Actions Area (Bottom) --- */
+.global-actions-section {
+    /* Inherits .card styles */
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 0; /* Reduce top margin if major-divider is present */
+}
+
+/* Batch Kwisp Status Message */
+#batchKwispStatus { /* Use ID selector */
+    font-size: 0.95em;
+    font-weight: 500;
+}
+/* Status modifier classes */
+.kwisp-status.sending { color: var(--dark-gray); }
+.kwisp-status.success { color: var(--success-green); }
+.kwisp-status.error   { color: var(--heijmans-red); }
+
+/* Position 'Upload More' link to the right */
+.global-actions-section .button-link {
+    margin-left: auto;
 }

@@ -1,78 +1,210 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prediction Result</title>
-    <link rel="icon" href="../images/heijmans-favicon.ico" type="image/png">
+    <!-- ... head content ... -->
+    <title>Classification Results</title>
+    <link rel="icon" href="/images/heijmans-favicon.ico" type="image/png">
     <link rel="stylesheet" href="/css/style.css">
 </head>
-
 <body>
-    <!-- Overall page container -->
     <div class="container">
-
         <header class="page-header">
-            <img src="../images/heijmans-logo.png" alt="Heijmans Logo" class="header-logo">
-            <h1>Prediction Result</h1>
+            <h1>Classification Results</h1>
+            <img src="/images/heijmans-logo.png" alt="Heijmans Logo" class="header-logo">
         </header>
 
-        <!-- Container for general info -->
-        <div class="info-section card highlight-border"> <!-- Added 'card' class -->
-            <p>File Uploaded: <strong>
-                    <%= filename %>
-                </strong></p>
-        </div>
+        <% if (typeof results !== 'undefined' && results.length > 0) { %>
 
+            <div class="results-scroll-container">
+                <% results.forEach((result, index) => { %>
+                    <div class="result-item card highlight-border">
 
-        <!-- Container for the main prediction results -->
-        <div class="prediction-section card highlight-border"> <!-- Added 'card' class -->
-            <h2>Azure AI Model Prediction:</h2>
+                        <div class="prediction-section">
+                            <!-- Add checkbox for each result -->
+                            <!-- This checkbox is used to select results for batch actions -->
+                            <div class="result-header">
+                                <h2 id="heading_<%= result.id %>">
+                                    <label for="checkbox_<%= result.id %>" class="checkbox-label-wrapper"> <!-- Make heading clickable for checkbox -->
+                                        Result #<%= index + 1 %> - <%= result.filename %>
+                                    </label>
+                                </h2>
+                                <input type="checkbox"
+                                       class="kwisp-select-checkbox visually-hidden"
+                                       id="checkbox_<%= result.id %>"
+                                       data-result-id="<%= result.id %>"
+                                       aria-labelledby="heading_<%= result.id %>">
+                                <label for="checkbox_<%= result.id %>" class="select-toggle-button">
+                                    <!-- Text will be handled by CSS potentially -->
+                                    Select
+                                </label>
+                            </div>
 
-            <% if (prediction) { %>
-                <%# Attempt to display the specific 'prediction' key first %>
-                    <% if (prediction.prediction) { %>
-                        <div class="prediction-summary">
-                            <p class="result-label">Result: <%= prediction.prediction %>
-                            </p>
+                            <% if (result.prediction) { %>
+                                <!-- Hidden inputs -->
+                                <input type="hidden" id="imageDataUrl_<%= result.id %>" value="<%= result.originalImageDataUrl %>">
+                                <input type="hidden" id="imageFilename_<%= result.id %>" value="<%= result.filename %>">
+                                <input type="hidden" id="predictionData_<%= result.id %>" value="<%= JSON.stringify(result.prediction) %>">
+
+                                <!-- Display Text Results -->
+                                <% if (typeof result.prediction.prediction === 'boolean') { %>
+                                    <div class="prediction-summary">
+                                        <p class="result-label">Result: <%= result.prediction.prediction ? 'Crack Detected' : 'No Crack Detected' %></p>
+                                    </div>
+                                <% } else { %>
+                                    <div class="prediction-summary">
+                                        <p class="result-label">Result: <%= result.prediction.prediction %></p>
+                                    </div>
+                                <% } %>
+                                <% if (typeof result.prediction.confidence === 'number') { %>
+                                    <div class="prediction-confidence">
+                                        <p>Confidence: <%= result.prediction.confidence.toFixed(2) %></p>
+                                    </div>
+                                <% } %>
+
+                                <!-- Wrapper for Side-by-Side Images -->
+                                <div class="image-comparison-wrapper">
+                                     <!-- Classified Image -->
+                                     <% if (result.classifiedImageDataUrl) { %>
+                                        <div class="classified-image-container">
+                                            <h4>Classified Image:</h4>
+                                            <img src="<%= result.classifiedImageDataUrl %>" alt="Classified image for <%= result.filename %>" class="classified-image">
+                                        </div>
+                                    <% } else { %>
+                                        <div class="classified-image-container placeholder">
+                                            <h4>Classified Image:</h4>
+                                            <p><em>(Not provided)</em></p>
+                                        </div>
+                                    <% } %>
+                                    <!-- Original Image -->
+                                    <div class="original-image-container">
+                                        <h4>Original Image:</h4>
+                                        <img src="<%= result.originalImageDataUrl %>" alt="Original image for <%= result.filename %>" class="original-image">
+                                    </div>
+                                </div>
+
+                                <hr class="section-divider">
+
+                            <% } else { %>
+                                <div class="error-message">
+                                    <p style="color: red;">Error: No prediction data received for this file.</p>
+                                </div>
+                            <% } %>
                         </div>
-                    <% } else { %>
-                        <div class="prediction-summary">
-                            <p><em>Standard 'prediction' key not found in response.</em></p>
-                        </div>
+                    </div> <!-- End of .result-item -->
+
+                    <% if (index < results.length - 1) { %>
+                         <hr class="major-divider">
                     <% } %>
 
-                    <%# Example: Display confidence if available %>
-                    <% if (typeof prediction.confidence==='number' ) { %>
-                        <div class="prediction-confidence">
-                            <p>Confidence: <%= prediction.confidence.toFixed(3) %>
-                            </p>
-                        </div>
-                    <% } %>
+                <% }) %> <!-- End of forEach loop -->
+            </div> <!-- End of .results-scroll-container -->
 
-                    <hr class="section-divider"> <!-- Optional visual separator -->
+        <% } else { %>
+            <div class="card highlight-border">
+                <p>No prediction results to display.</p>
+            </div>
+        <% } %>
 
-                    <!-- Container for the raw response -->
-                    <div class="raw-response-details">
-                        <h3>Full Azure Response:</h3>
-                        <pre><%= JSON.stringify(prediction, null, 2) %></pre>
-                    </div>
+        <hr class="major-divider">
 
-            <% } else { %>
-                <div class="error-message">
-                    <p style="color: red;">Error: No prediction data received.</p>
-                </div>
-            <% } %>
+        <!--Send Selected to Kwisp Button-->
+        <div class="global-actions-section card">
+            <button type="button" id="sendSelectedKwispBtn" class="button-primary">Send Selected to Kwisp</button>
+            <span id="batchKwispStatus" class="kwisp-status"></span>
+            <a href="/" class="button-link" style="margin-left: auto;">Upload More Images</a> <!-- Moved link here -->
         </div>
-
-
-        <!-- Container for action links -->
-        <div class="actions-section">
-            <a href="/" class="button-link">Upload Another Image</a>
-        </div>
-
     </div> <!-- End of .container -->
-</body>
 
+    <!-- JavaScript for handling batch sending to Kwisp -->
+    <script>
+        const sendBatchBtn = document.getElementById('sendSelectedKwispBtn');
+        const batchStatus = document.getElementById('batchKwispStatus');
+
+        if (sendBatchBtn) { // Check if the button exists (i.e., if there are results)
+            sendBatchBtn.addEventListener('click', async () => {
+                // Find all checked checkboxes
+                const checkedBoxes = document.querySelectorAll('.kwisp-select-checkbox:checked');
+
+                if (checkedBoxes.length === 0) {
+                    batchStatus.textContent = 'Please select at least one result to send.';
+                    batchStatus.className = 'kwisp-status error';
+                    return; // Stop if nothing is selected
+                }
+
+                // Prepare status update and disable button
+                batchStatus.textContent = 'Preparing data...';
+                batchStatus.className = 'kwisp-status sending';
+                sendBatchBtn.disabled = true;
+
+                // Gather data for selected items
+                const selectedItemsData = [];
+                let errorInData = false;
+
+                checkedBoxes.forEach(checkbox => {
+                    const resultId = checkbox.dataset.resultId;
+                    const imageDataUrlInput = document.getElementById(`imageDataUrl_${resultId}`);
+                    const imageFilenameInput = document.getElementById(`imageFilename_${resultId}`);
+                    const predictionDataInput = document.getElementById(`predictionData_${resultId}`);
+
+                    if (!imageDataUrlInput || !imageFilenameInput || !predictionDataInput) {
+                        console.error("Could not find associated elements for result ID:", resultId);
+                        errorInData = true; // Mark error
+                        return; // Skip this item
+                    }
+
+                    try {
+                         selectedItemsData.push({
+                            // Only send necessary data to backend
+                            imageDataUrl: imageDataUrlInput.value,
+                            filename: imageFilenameInput.value,
+                            predictionObj: JSON.parse(predictionDataInput.value) // Parse prediction data here
+                        });
+                    } catch (parseError) {
+                        console.error("Error parsing prediction data for result ID:", resultId, parseError);
+                        errorInData = true; // Mark error
+                    }
+                });
+
+                // If critical data was missing or failed to parse for any selected item
+                if (errorInData) {
+                    batchStatus.textContent = 'Error: Could not gather data for all selected items. Check console.';
+                    batchStatus.className = 'kwisp-status error';
+                    sendBatchBtn.disabled = false; // Re-enable button
+                    return;
+                }
+
+                // Send data to the backend endpoint
+                batchStatus.textContent = `Sending ${selectedItemsData.length} item(s)...`;
+                try {
+                    const response = await fetch('/send-batch-to-kwisp', { 
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ selectedItems: selectedItemsData }), // Send data array wrapped in an object
+                    });
+
+                    const result = await response.json(); // Assume backend always sends JSON
+
+                    if (response.ok && result.success) {
+                        batchStatus.textContent = `Successfully sent ${selectedItemsData.length} item(s) to Kwisp!`;
+                        batchStatus.className = 'kwisp-status success';
+                        // Optionally: uncheck boxes, keep button disabled, etc.
+                        // checkedBoxes.forEach(cb => cb.checked = false);
+                    } else {
+                        batchStatus.textContent = `Error: ${result.message || 'Failed to send batch.'}`;
+                        batchStatus.className = 'kwisp-status error';
+                        sendBatchBtn.disabled = false; // Re-enable on failure
+                    }
+                } catch (error) {
+                    console.error('Fetch error sending batch:', error);
+                    batchStatus.textContent = 'Error: Network issue or server unavailable.';
+                    batchStatus.className = 'kwisp-status error';
+                    sendBatchBtn.disabled = false; // Re-enable on network error
+                }
+            });
+        } else {
+             console.log("Send batch button not found (likely no results).");
+        }
+
+    </script>
+</body>
 </html>
