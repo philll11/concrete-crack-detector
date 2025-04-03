@@ -3,14 +3,14 @@
 <head>
     <!-- ... head content ... -->
     <title>Classification Results</title>
-    <link rel="icon" href="/images/heijmans-favicon.ico" type="image/png">
+    <link rel="icon" href="/images/app-favicon.ico" type="image/png">
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <div class="container">
         <header class="page-header">
             <h1>Classification Results</h1>
-            <img src="/images/heijmans-logo.png" alt="Heijmans Logo" class="header-logo">
+            <img src="/images/app-logo.png" alt="Application Logo" class="header-logo">
         </header>
 
         <% if (typeof results !== 'undefined' && results.length > 0) { %>
@@ -29,7 +29,7 @@
                                     </label>
                                 </h2>
                                 <input type="checkbox"
-                                       class="kwisp-select-checkbox visually-hidden"
+                                       class="incident-select-checkbox visually-hidden"
                                        id="checkbox_<%= result.id %>"
                                        data-result-id="<%= result.id %>"
                                        aria-labelledby="heading_<%= result.id %>">
@@ -107,33 +107,33 @@
 
         <hr class="major-divider">
 
-        <!--Send Selected to Kwisp Button-->
+        <!--Send Selected to Incident API Button-->
         <div class="global-actions-section card">
-            <button type="button" id="sendSelectedKwispBtn" class="button-primary">Send Selected to Kwisp</button>
-            <span id="batchKwispStatus" class="kwisp-status"></span>
+            <button type="button" id="sendSelectedIncidentBtn" class="button-primary">Send Selected to Incident API</button>
+            <span id="batchIncidentStatus" class="incident-status"></span>
             <a href="/" class="button-link" style="margin-left: auto;">Upload More Images</a> <!-- Moved link here -->
         </div>
     </div> <!-- End of .container -->
 
-    <!-- JavaScript for handling batch sending to Kwisp -->
+    <!-- JavaScript for handling batch sending to Incident API -->
     <script>
-        const sendBatchBtn = document.getElementById('sendSelectedKwispBtn');
-        const batchStatus = document.getElementById('batchKwispStatus');
+        const sendBatchBtn = document.getElementById('sendSelectedIncidentBtn');
+        const batchStatus = document.getElementById('batchIncidentStatus');
 
         if (sendBatchBtn) { // Check if the button exists (i.e., if there are results)
             sendBatchBtn.addEventListener('click', async () => {
                 // Find all checked checkboxes
-                const checkedBoxes = document.querySelectorAll('.kwisp-select-checkbox:checked');
+                const checkedBoxes = document.querySelectorAll('.incident-select-checkbox:checked');
 
                 if (checkedBoxes.length === 0) {
                     batchStatus.textContent = 'Please select at least one result to send.';
-                    batchStatus.className = 'kwisp-status error';
+                    batchStatus.className = 'incident-status error';
                     return; // Stop if nothing is selected
                 }
 
                 // Prepare status update and disable button
                 batchStatus.textContent = 'Preparing data...';
-                batchStatus.className = 'kwisp-status sending';
+                batchStatus.className = 'incident-status sending';
                 sendBatchBtn.disabled = true;
 
                 // Gather data for selected items
@@ -168,7 +168,7 @@
                 // If critical data was missing or failed to parse for any selected item
                 if (errorInData) {
                     batchStatus.textContent = 'Error: Could not gather data for all selected items. Check console.';
-                    batchStatus.className = 'kwisp-status error';
+                    batchStatus.className = 'incident-status error';
                     sendBatchBtn.disabled = false; // Re-enable button
                     return;
                 }
@@ -176,7 +176,7 @@
                 // Send data to the backend endpoint
                 batchStatus.textContent = `Sending ${selectedItemsData.length} item(s)...`;
                 try {
-                    const response = await fetch('/send-batch-to-kwisp', { 
+                    const response = await fetch('/send-batch-to-incident', { 
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ selectedItems: selectedItemsData }), // Send data array wrapped in an object
@@ -185,19 +185,19 @@
                     const result = await response.json(); // Assume backend always sends JSON
 
                     if (response.ok && result.success) {
-                        batchStatus.textContent = `Successfully sent ${selectedItemsData.length} item(s) to Kwisp!`;
-                        batchStatus.className = 'kwisp-status success';
+                        batchStatus.textContent = `Successfully sent ${selectedItemsData.length} item(s) to Incident API!`;
+                        batchStatus.className = 'incident-status success';
                         // Optionally: uncheck boxes, keep button disabled, etc.
                         // checkedBoxes.forEach(cb => cb.checked = false);
                     } else {
                         batchStatus.textContent = `Error: ${result.message || 'Failed to send batch.'}`;
-                        batchStatus.className = 'kwisp-status error';
+                        batchStatus.className = 'incident-status error';
                         sendBatchBtn.disabled = false; // Re-enable on failure
                     }
                 } catch (error) {
                     console.error('Fetch error sending batch:', error);
                     batchStatus.textContent = 'Error: Network issue or server unavailable.';
-                    batchStatus.className = 'kwisp-status error';
+                    batchStatus.className = 'incident-status error';
                     sendBatchBtn.disabled = false; // Re-enable on network error
                 }
             });

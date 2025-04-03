@@ -5,11 +5,11 @@
    ========================================================================== */
 
    :root {
-    --heijmans-blue: #004488;
-    --heijmans-yellow: #FFC107;
-    --heijmans-yellow-rgb: 255, 193, 7; /* For box-shadow focus */
-    --heijmans-red: #DC3545;
-    --heijmans-white: #ffffff;
+    --application-blue: #004488;
+    --application-yellow: #FFC107;
+    --application-yellow-rgb: 255, 193, 7; /* For box-shadow focus */
+    --application-red: #DC3545;
+    --application-white: #ffffff;
     --light-gray: #f4f4f4;
     --medium-gray: #dddddd;
     --dark-gray: #555555;
@@ -28,7 +28,7 @@ body {
 
 /* Basic link styling */
 a {
-    color: var(--heijmans-blue);
+    color: var(--application-blue);
     text-decoration: none;
     transition: color 0.2s ease;
 }
@@ -40,7 +40,7 @@ a:hover {
 
 /* Basic heading styling (can be overridden) */
 h1, h2, h3, h4 {
-    color: var(--heijmans-blue);
+    color: var(--application-blue);
     margin-top: 0; /* Common reset */
 }
 
@@ -77,15 +77,15 @@ hr.major-divider {
 .container {
     max-width: 1500px; /* Adjusted max width */
     margin: 40px auto;
-    background-color: var(--heijmans-white);
+    background-color: var(--application-white);
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     overflow: hidden; /* Contains floats and margins */
 }
 
 .page-header {
-    background-color: var(--heijmans-blue);
-    color: var(--heijmans-white);
+    background-color: var(--application-blue);
+    color: var(--application-white);
     padding: 20px 25px;
     margin: 0;
     display: flex;
@@ -104,7 +104,7 @@ hr.major-divider {
     margin: 0;
     font-size: 1.8em;
     font-weight: 600;
-    color: var(--heijmans-white); /* Override default blue heading color */
+    color: var(--application-white); /* Override default blue heading color */
     margin: 0; /* Ensure no extra margins interfere */
 }
 
@@ -118,11 +118,11 @@ hr.major-divider {
     border-radius: 6px;
     padding: 20px 25px;
     margin: 25px;
-    background-color: var(--heijmans-white);
+    background-color: var(--application-white);
 }
 
 .card.highlight-border {
-    border-left: 5px solid var(--heijmans-yellow);
+    border-left: 5px solid var(--application-yellow);
     /* Keep other borders subtle */
     border-top: 1px solid var(--medium-gray);
     border-right: 1px solid var(--medium-gray);
@@ -151,19 +151,19 @@ hr.major-divider {
 .flash-error {
     background-color: #f8d7da;
     color: #721c24;
-    border-color: var(--heijmans-red);
+    border-color: var(--application-red);
 }
 
 .flash-info {
     background-color: #cce5ff;
     color: #004085;
-    border-color: var(--heijmans-blue);
+    border-color: var(--application-blue);
 }
 
 .flash-success {
     background-color: #fff3cd;
     color: #856404;
-    border-color: var(--heijmans-yellow);
+    border-color: var(--application-yellow);
 }
 
 /* --- Forms --- */
@@ -175,7 +175,7 @@ hr.major-divider {
 .upload-form label {
     display: block;
     margin-bottom: 6px;
-    color: var(--heijmans-blue);
+    color: var(--application-blue);
     font-weight: 600;
 }
 
@@ -189,8 +189,8 @@ hr.major-divider {
 }
 
 .upload-form input[type="file"]::file-selector-button {
-    background-color: var(--heijmans-yellow);
-    color: var(--heijmans-blue);
+    background-color: var(--application-yellow);
+    color: var(--application-blue);
     border: none;
     padding: 8px 15px;
     border-radius: 4px;
@@ -234,8 +234,8 @@ button:disabled {
 /* Primary Button Style (Default <button> and specific class) */
 button,
 .button-primary {
-    background-color: var(--heijmans-blue);
-    color: var(--heijmans-white);
+    background-color: var(--application-blue);
+    color: var(--application-white);
 }
 button:hover:not(:disabled),
 .button-primary:hover:not(:disabled) {
@@ -249,12 +249,12 @@ button:disabled,
 
 /* Link styled as button (e.g., Upload More) */
 .button-link {
-    background-color: var(--heijmans-yellow);
-    color: var(--heijmans-blue);
+    background-color: var(--application-yellow);
+    color: var(--application-blue);
 }
 .button-link:hover {
     background-color: #e0a800; /* Darker yellow */
-    color: var(--heijmans-blue); /* Keep text color */
+    color: var(--application-blue); /* Keep text color */
     text-decoration: none; /* Keep underline off */
 }
 
@@ -283,10 +283,10 @@ button:disabled,
     border-color: var(--dark-gray);
 }
 
-.kwisp-select-checkbox + .select-toggle-button::before {
+.incident-select-checkbox + .select-toggle-button::before {
     content: 'Select';
 }
-.kwisp-select-checkbox:checked + .select-toggle-button::before {
+.incident-select-checkbox:checked + .select-toggle-button::before {
     content: 'Selected';
 }
 
@@ -300,21 +300,21 @@ button:disabled,
 }
 
 /* Checked State */
-.kwisp-select-checkbox:checked + .select-toggle-button {
-    background-color: var(--heijmans-blue);
-    color: var(--heijmans-white);
-    border-color: var(--heijmans-blue);
+.incident-select-checkbox:checked + .select-toggle-button {
+    background-color: var(--application-blue);
+    color: var(--application-white);
+    border-color: var(--application-blue);
 }
-.kwisp-select-checkbox:checked + .select-toggle-button:hover {
+.incident-select-checkbox:checked + .select-toggle-button:hover {
     background-color: #003366;
     border-color: #003366;
 }
 
 /* Focus State */
-.kwisp-select-checkbox:focus + .select-toggle-button {
-    outline: 2px solid var(--heijmans-yellow);
+.incident-select-checkbox:focus + .select-toggle-button {
+    outline: 2px solid var(--application-yellow);
     outline-offset: 2px;
-    box-shadow: 0 0 0 3px rgba(var(--heijmans-yellow-rgb), 0.5);
+    box-shadow: 0 0 0 3px rgba(var(--application-yellow-rgb), 0.5);
 }
 
 
@@ -359,7 +359,7 @@ button:disabled,
     align-items: center;
     justify-content: space-between;
     margin-bottom: 15px;
-    border-bottom: 2px solid var(--heijmans-yellow);
+    border-bottom: 2px solid var(--application-yellow);
     padding-bottom: 10px;
 }
 
@@ -378,7 +378,7 @@ button:disabled,
 .classification-summary .result-label {
     font-size: 1.3em;
     font-weight: bold;
-    color: var(--heijmans-blue);
+    color: var(--application-blue);
     margin-bottom: 10px;
     margin-top: 15px; /* Add some space above */
 }
@@ -454,15 +454,15 @@ button:disabled,
     margin-top: 0; /* Reduce top margin if major-divider is present */
 }
 
-/* Batch Kwisp Status Message */
-#batchKwispStatus { /* Use ID selector */
+/* Batch Incident API Status Message */
+#batchIncidentStatus { /* Use ID selector */
     font-size: 0.95em;
     font-weight: 500;
 }
 /* Status modifier classes */
-.kwisp-status.sending { color: var(--dark-gray); }
-.kwisp-status.success { color: var(--success-green); }
-.kwisp-status.error   { color: var(--heijmans-red); }
+.incident-status.sending { color: var(--dark-gray); }
+.incident-status.success { color: var(--success-green); }
+.incident-status.error   { color: var(--application-red); }
 
 /* Position 'Upload More' link to the right */
 .global-actions-section .button-link {

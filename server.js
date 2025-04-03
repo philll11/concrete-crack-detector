@@ -20,9 +20,9 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET; // Client Secret for Azure
 const AZURE_API_KEY = process.env.AZURE_API_KEY;
 const SESSION_SECRET = process.env.SESSION_SECRET;
 
-// Get Kwisp API URL from environment variables
-const HEIJMANS_KWISP_API_URL = process.env.HEIJMANS_KWISP_API_URL; // Kwisp API URL
-const HEIJMANS_KWISP_API_KEY = process.env.HEIJMANS_KWISP_API_KEY; // Kwisp API Key (if needed)
+// Get Incident API URL from environment variables
+const INCIDENT_API_URL = process.env.INCIDENT_API_URL; // Incident API URL
+const INCIDENT_API_KEY = process.env.INCIDENT_API_KEY; // Incident API Key (if needed)
 
 if (!SESSION_SECRET) {
     console.error("FATAL ERROR: SESSION_SECRET is not set in the .env file.");
@@ -36,7 +36,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Parse JSON request bodies (needed for API calls)
 app.use(express.json({ limit: '20mb' })); // Note: The limit is set to 20mb to accommodate larger base64 image data
-// Middleware to parse URL-encoded bodies (needed for forms, though not strictly for the Kwisp call)
+// Middleware to parse URL-encoded bodies (needed for forms, though not strictly for the Incident call)
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 // Parse incoming request bodies (form data)
 app.set('view engine', 'ejs');
@@ -116,8 +116,6 @@ app.post('/classify', (req, res) => {
                 const originalFilename = file.originalname;
                 const mimeType = file.mimetype;
 
-                console.log("here");
-
                 // Call classification API
                 let classificationResult = await callAzureClassificationAPI(imageBuffer);
 
@@ -177,8 +175,8 @@ app.post('/classify', (req, res) => {
 });
 
 
-// POST /send-batch-to-kwisp route to send batch data to Kwisp
-app.post('/send-batch-to-kwisp', async (req, res) => {
+// POST /send-batch-to-incident-api route to send batch data to Incident
+app.post('/send-batch-to-incident-api', async (req, res) => {
     const { selectedItems } = req.body; // Expect an array named 'selectedItems'
 
     console.log(`Received request to send batch report for ${selectedItems?.length} items.`);
@@ -189,11 +187,11 @@ app.post('/send-batch-to-kwisp', async (req, res) => {
     }
 
     try {
-        // --- Create the Base Kwisp Payload ---
+        // --- Create the Base Incident Payload ---
         const caseId = `batch-${Date.now()}`; // Example dynamic ID
         const agreementDesignation = "HEIJ123-BATCH"; // Example designation
 
-        const kwispPayload = {
+        const incidentPayload = {
             "sender": "SRC1",
             "receiver": "Heijmans",
             "instigator": "concrete-innovation",
@@ -224,28 +222,28 @@ app.post('/send-batch-to-kwisp', async (req, res) => {
             const { base64Data, fileExtension } = extractBase64AndExtension(imageDataUrl);
 
             // Create the attachment object for this item (Refactored into helper)
-            const attachment = createKwispAttachment(filename, fileExtension, classificationObj, base64Data);
-            kwispPayload.case.attachments.push(attachment);
+            const attachment = createIncidentAttachment(filename, fileExtension, classificationObj, base64Data);
+            incidentPayload.case.attachments.push(attachment);
         }
 
          // Check if any valid attachments were actually added
-         if (kwispPayload.case.attachments.length === 0) {
+         if (incidentPayload.case.attachments.length === 0) {
             throw new Error("No valid items could be processed for the batch.");
          }
 
 
-        // --- Send the Combined Payload to Kwisp ---
-        console.log(`Sending batch payload with ${kwispPayload.case.attachments.length} attachments to Kwisp.`);
-        await sendToKwisp(kwispPayload); // Use the existing sender function
+        // --- Send the Combined Payload to Incident API ---
+        console.log(`Sending batch payload with ${incidentPayload.case.attachments.length} attachments to Incident.`);
+        await sendToIncident(incidentPayload); // Use the existing sender function
 
         // --- Send Success Response ---
-        res.json({ success: true, message: `Batch report for ${kwispPayload.case.attachments.length} items sent successfully.` });
+        res.json({ success: true, message: `Batch report for ${incidentPayload.case.attachments.length} items sent successfully.` });
 
     } catch (error) {
-        console.error(`Error processing /send-batch-to-kwisp:`, error);
+        console.error(`Error processing /send-batch-to-incident-api:`, error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Failed to send batch data to Kwisp due to an internal error.'
+            message: error.message || 'Failed to send batch data to Incident API due to an internal error.'
         });
     }
 });
@@ -365,14 +363,14 @@ function extractBase64AndExtension(imageDataUrl) {
     return { base64Data, fileExtension };
 }
 
-// --- NEW/REFACTORED: Helper to create a single Kwisp Attachment object ---
-function createKwispAttachment(filename, fileExtension, classificationObj, base64Data) {
+// --- NEW/REFACTORED: Helper to create a single Incident API Attachment object ---
+function createIncidentAttachment(filename, fileExtension, classificationObj, base64Data) {
     // Convert boolean classification back to string if needed, or adjust based on API expectation
     const classificationText = typeof classificationObj?.crackDetected === 'boolean' ? (classificationObj.crackDetected ? 'Cracks Detected' : 'No Cracks Detected') : (classificationObj?.crackDetected || 'N/A');
     const confidenceText = classificationObj?.confidence?.toFixed(3) || 'N/A';
 
     return {
-        "type": fileExtension.startsWith('.') ? fileExtension.substring(1) : fileExtension, // Kwisp might want "jpeg" not ".jpeg"
+        "type": fileExtension.startsWith('.') ? fileExtension.substring(1) : fileExtension, // Incident API might want "jpeg" not ".jpeg"
         "class": "file",
         "designation": filename,
         "base64String": base64Data,
@@ -382,54 +380,54 @@ function createKwispAttachment(filename, fileExtension, classificationObj, base6
 
 
 /**
- * Send data to Kwisp API
- * @param {Object} payload - The payload object to be sent to the Kwisp API
+ * Send data to Incident API
+ * @param {Object} payload - The payload object to be sent to the Incident API
  * @returns {Promise<boolean>} - Returns true if the API call is accepted (status 202)
- * @description This function sends the payload to the Kwisp API using Axios.
+ * @description This function sends the payload to the Incident API using Axios.
  * It handles the response and throws detailed errors on failure.
  * @throws {Error} - Throws an error if the API call fails, receives an unexpected status,
- *                   or if the Kwisp API URL is not configured (implicit check needed).
+ *                   or if the Incident API URL is not configured (implicit check needed).
  * @throws {Error} - Throws an error if the payload is not valid (implicit).
  */
-async function sendToKwisp(payload) {
-    if (!HEIJMANS_KWISP_API_URL || !HEIJMANS_KWISP_API_URL) {
-        console.error("FATAL ERROR: Required environment variables for Kwisp API are not set.");
-        throw new Error("FATAL ERROR: Required environment variables for Kwisp API are not set.");
+async function sendToIncident(payload) {
+    if (!INCIDENT_API_URL || !INCIDENT_API_URL) {
+        console.error("FATAL ERROR: Required environment variables for Incident API are not set.");
+        throw new Error("FATAL ERROR: Required environment variables for Incident API are not set.");
     }
 
-    console.log(`Sending request to Kwisp API: ${HEIJMANS_KWISP_API_URL}`);
+    console.log(`Sending request to Incident API: ${INCIDENT_API_URL}`);
     try {
-        const kwispResponse = await axios.post(HEIJMANS_KWISP_API_URL, payload, {
+        const incidentResponse = await axios.post(INCIDENT_API_URL, payload, {
             headers: {
                 'Content-Type': 'application/json',
-                'Ocp-Apim-Subscription-Key': HEIJMANS_KWISP_API_KEY, // Kwisp API Key (if needed)
-                // Add other necessary Kwisp API headers here if needed
+                'Ocp-Apim-Subscription-Key': INCIDENT_API_KEY, // Incident API Key (if needed)
+                // Add other necessary Incident API headers here if needed
             },
             timeout: 30000 // 30 second timeout
         });
 
         // Check specifically for 202 Accepted response
-        if (kwispResponse.status === 202) {
-            console.log("Kwisp API accepted the request (Status 202).");
+        if (incidentResponse.status === 202) {
+            console.log("Incident API accepted the request (Status 202).");
             return true; // Signal success back to the route handler
         } else {
-            console.warn(`Kwisp API returned unexpected success status: ${kwispResponse.status}`);
-            throw new Error(`Kwisp API returned unexpected status ${kwispResponse.status}`);
+            console.warn(`Incident API returned unexpected success status: ${incidentResponse.status}`);
+            throw new Error(`Incident API returned unexpected status ${incidentResponse.status}`);
         }
 
     } catch (error) {
-        console.error("Error calling Kwisp API:");
-        let errorMessage = "Failed to send data to Kwisp.";
+        console.error("Error calling Incident API:");
+        let errorMessage = "Failed to send data to Incident API.";
         // Check if it's an Axios error with a response from the server
         if (error.response) {
             console.error('Status:', error.response.status);
             console.error('Headers:', error.response.headers);
             console.error('Data:', error.response.data);
-            errorMessage = `Kwisp API Error: ${error.response.status} - ${JSON.stringify(error.response.data)}`;
+            errorMessage = `Incident API Error: ${error.response.status} - ${JSON.stringify(error.response.data)}`;
         } else if (error.request) {
             // The request was made but no response was received
             console.error('Request Error:', error.request);
-            errorMessage = "Network error: No response received from Kwisp API.";
+            errorMessage = "Network error: No response received from Incident API.";
             // error.statusCode = 504; // Gateway Timeout (optional)
         } else {
             // Something happened in setting up the request or a non-Axios error
