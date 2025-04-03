@@ -19,7 +19,7 @@
                 <% results.forEach((result, index) => { %>
                     <div class="result-item card highlight-border">
 
-                        <div class="prediction-section">
+                        <div class="classification-section">
                             <!-- Add checkbox for each result -->
                             <!-- This checkbox is used to select results for batch actions -->
                             <div class="result-header">
@@ -39,30 +39,35 @@
                                 </label>
                             </div>
 
-                            <% if (result.prediction) { %>
+                            <% if (result.classification) { %>
                                 <!-- Hidden inputs -->
                                 <input type="hidden" id="imageDataUrl_<%= result.id %>" value="<%= result.originalImageDataUrl %>">
                                 <input type="hidden" id="imageFilename_<%= result.id %>" value="<%= result.filename %>">
-                                <input type="hidden" id="predictionData_<%= result.id %>" value="<%= JSON.stringify(result.prediction) %>">
+                                <input type="hidden" id="classificationData_<%= result.id %>" value="<%= JSON.stringify(result.classification) %>">
 
                                 <!-- Display Text Results -->
-                                <% if (typeof result.prediction.prediction === 'boolean') { %>
-                                    <div class="prediction-summary">
-                                        <p class="result-label">Result: <%= result.prediction.prediction ? 'Crack Detected' : 'No Crack Detected' %></p>
+                                <% if (typeof result.classification.crackDetected === 'boolean') { %>
+                                    <div class="classification-summary">
+                                        <p class="result-label">Result: <%= result.classification.crackDetected ? 'Cracks Detected' : 'No Cracks Detected' %></p>
                                     </div>
                                 <% } else { %>
-                                    <div class="prediction-summary">
-                                        <p class="result-label">Result: <%= result.prediction.prediction %></p>
+                                    <div class="classification-summary">
+                                        <p class="result-label">Result: <%= result.classification.crackDetected %></p>
                                     </div>
                                 <% } %>
-                                <% if (typeof result.prediction.confidence === 'number') { %>
-                                    <div class="prediction-confidence">
-                                        <p>Confidence: <%= result.prediction.confidence.toFixed(2) %></p>
+                                <% if (typeof result.classification.confidence === 'number') { %>
+                                    <div class="classification-confidence">
+                                        <p>Confidence: <%= result.classification.confidence.toFixed(2) %></p>
                                     </div>
                                 <% } %>
 
                                 <!-- Wrapper for Side-by-Side Images -->
                                 <div class="image-comparison-wrapper">
+                                    <!-- Original Image -->
+                                    <div class="original-image-container">
+                                        <h4>Original Image:</h4>
+                                        <img src="<%= result.originalImageDataUrl %>" alt="Original image for <%= result.filename %>" class="original-image">
+                                    </div>
                                      <!-- Classified Image -->
                                      <% if (result.classifiedImageDataUrl) { %>
                                         <div class="classified-image-container">
@@ -75,18 +80,13 @@
                                             <p><em>(Not provided)</em></p>
                                         </div>
                                     <% } %>
-                                    <!-- Original Image -->
-                                    <div class="original-image-container">
-                                        <h4>Original Image:</h4>
-                                        <img src="<%= result.originalImageDataUrl %>" alt="Original image for <%= result.filename %>" class="original-image">
-                                    </div>
                                 </div>
 
                                 <hr class="section-divider">
 
                             <% } else { %>
                                 <div class="error-message">
-                                    <p style="color: red;">Error: No prediction data received for this file.</p>
+                                    <p style="color: red;">Error: No classification data received for this file.</p>
                                 </div>
                             <% } %>
                         </div>
@@ -101,7 +101,7 @@
 
         <% } else { %>
             <div class="card highlight-border">
-                <p>No prediction results to display.</p>
+                <p>No classification results to display.</p>
             </div>
         <% } %>
 
@@ -144,9 +144,9 @@
                     const resultId = checkbox.dataset.resultId;
                     const imageDataUrlInput = document.getElementById(`imageDataUrl_${resultId}`);
                     const imageFilenameInput = document.getElementById(`imageFilename_${resultId}`);
-                    const predictionDataInput = document.getElementById(`predictionData_${resultId}`);
+                    const classificationDataInput = document.getElementById(`classificationData_${resultId}`);
 
-                    if (!imageDataUrlInput || !imageFilenameInput || !predictionDataInput) {
+                    if (!imageDataUrlInput || !imageFilenameInput || !classificationDataInput) {
                         console.error("Could not find associated elements for result ID:", resultId);
                         errorInData = true; // Mark error
                         return; // Skip this item
@@ -157,10 +157,10 @@
                             // Only send necessary data to backend
                             imageDataUrl: imageDataUrlInput.value,
                             filename: imageFilenameInput.value,
-                            predictionObj: JSON.parse(predictionDataInput.value) // Parse prediction data here
+                            classificationObj: JSON.parse(classificationDataInput.value) // Parse classification data here
                         });
                     } catch (parseError) {
-                        console.error("Error parsing prediction data for result ID:", resultId, parseError);
+                        console.error("Error parsing classification data for result ID:", resultId, parseError);
                         errorInData = true; // Mark error
                     }
                 });

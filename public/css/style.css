@@ -348,7 +348,7 @@ button:disabled,
 }
 
 /* Section within result item */
-.result-item .prediction-section {
+.result-item .classification-section {
     padding: 20px 25px; /* Re-apply padding here if removed from card */
 }
 
@@ -374,8 +374,8 @@ button:disabled,
     white-space: nowrap;
 }
 
-/* --- Prediction Text Results --- */
-.prediction-summary .result-label {
+/* --- classification Text Results --- */
+.classification-summary .result-label {
     font-size: 1.3em;
     font-weight: bold;
     color: var(--heijmans-blue);
@@ -383,7 +383,7 @@ button:disabled,
     margin-top: 15px; /* Add some space above */
 }
 
-.prediction-confidence p {
+.classification-confidence p {
     font-size: 1.1em;
     color: var(--dark-gray);
     margin-bottom: 20px; /* Space before images */
