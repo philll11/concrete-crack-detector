@@ -111,5 +111,3 @@ The application defines the following main routes:
 *   `GET /`: Displays the main image upload page (`index.ejs`).
 *   `POST /classify`: Handles the image file uploads, calls the Azure prediction API for each image, and renders the results page (`result.ejs`).
 *   `POST /send-batch-to-incident-api`: Receives data for selected results from the client-side JavaScript, formats a single batch payload, and sends it to the Incident API.
-
-## Project Structure
